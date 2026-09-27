@@ -27,12 +27,12 @@ export function sampleProfile() {
   const T = (id, kind, name, extra = {}) => ({ id, kind, name, ...extra });
   const things = [
     T('home', 'place', 'Home', { home: true }),
-    T('drawer', 'place', 'Desk drawer', { inside: 'home' }),
+    T('drawer', 'place', 'Desk drawer', { inside: 'home', note: 'Left side of the desk in the study. The key hangs inside the pantry door.' }),
     T('iphone', 'phone', 'iPhone', { at: 'carried', unlock: 'pin' }),
     T('macbook', 'computer', 'MacBook', { at: 'home', unlock: 'macpw' }),
     T('yubikey', 'seckey', 'YubiKey (on keychain)', { at: 'carried' }),
     T('license', 'photoid', "Driver's license", { at: 'carried' }),
-    T('codes', 'paper', 'Printed Google backup codes', { at: 'drawer' }),
+    T('codes', 'paper', 'Printed Google backup codes', { at: 'drawer', note: 'In the blue folder at the back.' }),
     T('pin', 'secret', 'iPhone passcode', { shared: true }),
     T('macpw', 'secret', 'MacBook password'),
     T('bwpw', 'secret', 'Bitwarden master password'),
@@ -84,5 +84,26 @@ export function sampleProfile() {
     }, { name: 'Everything that resets by Gmail', count: 38, important: false }),
   ];
 
-  return { app: 'lockout-drill', schema: 1, owner: 'Alex', trusted: 'Sam', sample: true, things, accounts };
+  // What Alex wants done, for the handover guide.
+  const wishes = {
+    google: ['save', 'Download the photos first (Google Takeout), then close it.'],
+    bitwarden: ['keep', 'Every other password is in here. Keep it until everything below is sorted.'],
+    apple: ['save', 'The family photo library is in iCloud Photos.'],
+    verizon: ['keep', 'Keep my number active until the other accounts no longer send codes to it.'],
+    bank: ['money', 'Checking and savings. Sam is the payable-on-death beneficiary on savings.'],
+    coinbase: ['money', 'A small amount of bitcoin. Use their Executor Services form.'],
+    github: ['close', ''],
+    rest: ['close', 'Shopping, streaming and old forums. Cancel anything that bills monthly.'],
+  };
+  for (const a of accounts) {
+    const [wish, note] = wishes[a.id] || [];
+    if (wish) a.wish = wish;
+    if (note) a.note = note;
+  }
+  const handover = {
+    note: 'Sam, start with the desk drawer at home. Most things run through my Bitwarden vault, so get into that first.',
+    contacts: 'Estate lawyer: Dana Reyes. My will is with her.',
+  };
+
+  return { app: 'lockout-drill', schema: 1, owner: 'Alex', trusted: 'Sam', sample: true, things, accounts, handover };
 }

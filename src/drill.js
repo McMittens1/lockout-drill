@@ -21,7 +21,7 @@ export function drillView(openEditor) {
 
 // ------------------------------------------------------------------------------------------
 
-function tallyText(t) {
+export function tallyText(t) {
   const parts = [];
   if (t[0]) parts.push(h('span', { class: 'tone0' }, h('b', null, t[0]), ' locked'));
   if (t[1]) parts.push(h('span', { class: 'tone1' }, h('b', null, t[1]), ' appeal'));
@@ -88,6 +88,8 @@ function resultHead(cur, res) {
     h('h1', { tabindex: '-1' }, cur.title),
     h('p', { class: 'blurb' }, cur.blurb),
     h('p', { class: 'verdict' }, verdict),
+    heir && total && !S.ephemeral ? h('p', { class: 'note' }, `The Handover tab turns this drill into a step-by-step guide for ${who}. `,
+      h('button', { class: 'btn small', onclick: () => { S.view = 'handover'; rerender(); window.scrollTo({ top: 0 }); } }, 'See the guide')) : null,
     total ? h('div', { class: 'bar', role: 'img', 'aria-label': `${t[0]} locked out, ${t[1]} appeal only, ${t[2]} days, ${t[3]} fine` },
       [0, 1, 2, 3].map(s => t[s] ? h('span', { class: 'b' + s, style: `width:${(100 * t[s]) / total}%` }) : null)) : null,
     total ? h('div', { class: 'legend' }, [0, 1, 2, 3].map(s => h('span', null, h('i', { class: 'b' + s, style: `background:var(--${['locked', 'appeal', 'slow', 'ok'][s]})` }), STATE_LABEL[s]))) : null,
@@ -219,7 +221,7 @@ function detail(cur, res, r, openEditor) {
   return h('div', { class: 'detail' }, blocks);
 }
 
-const phrase = (via, label) => (VIA[via]?.phrase || '{x}').replace('{x}', label);
+const phrase = (via, label) => (VIA[via]?.phrase || '{x}').replace('{x}', () => label);
 
 function route(g, d) {
   if (!d) return h('p', { class: 'note' }, 'No way in.');
@@ -250,6 +252,7 @@ const DISABLED = {
   abroad: "Not possible from abroad",
   'only-you': 'Only you can do this',
   'only-heir': 'Only after your death',
+  'data-only': 'Hands over the data, not a way to sign in',
 };
 
 function waysView(g, sim, b, depth, path) {

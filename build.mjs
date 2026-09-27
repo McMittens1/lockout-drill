@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { Script } from 'node:vm';
 
-const ORDER = ['engine', 'templates', 'csv', 'crypto', 'sample', 'advice', 'ui', 'store', 'quickstart', 'drill', 'setup', 'weak', 'app'];
+const ORDER = ['engine', 'templates', 'csv', 'crypto', 'sample', 'advice', 'guide', 'ui', 'store', 'quickstart', 'drill', 'setup', 'weak', 'plan', 'handover', 'app'];
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/^﻿/, '');
 
 let js = '"use strict";\n';
@@ -18,6 +18,11 @@ for (const name of ORDER) {
     return `const {${names.replace(/\s+as\s+/g, ': ')}} = __m_${mod};`;
   });
   if (/^(import|export)[\s{*]/m.test(src)) throw new Error(`Unhandled import/export syntax in ${name}.js`);
+  // The app rebuilds its own page for handover files from this shell plus its own style and script.
+  if (name === 'app') {
+    if (!src.includes('/*__SHELL__*/null')) throw new Error('app.js has no /*__SHELL__*/ placeholder');
+    src = src.replace('/*__SHELL__*/null', () => JSON.stringify(read('./src/index.html')));
+  }
   js += `\nconst __m_${name} = (() => {\n${src}\nreturn { ${exported.join(', ')} };\n})();\n`;
 }
 js += '\n__m_app.boot();\n';

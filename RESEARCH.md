@@ -137,3 +137,20 @@ most important ones:
 
 Each fix has a regression test in `test/review-regressions.test.mjs` or `test/storage.test.mjs`.
 The full review is in `research/review_condensed.txt`.
+
+### Handover review
+
+The handover mode (Plan page, Handover tab, guide, encrypted handover file) had its own review by
+two agents: one for security and data safety, one for the guide's logic and wording. They found no
+script injection, no way for a handover file to touch the owner's stored setup, and no crypto
+misuse. They confirmed twelve smaller defects, all fixed:
+
+- **Data-only family routes.** Google's Inactive Account Manager, Apple's Legacy Contact and a bank's estate process hand over data or money, not a login. The engine now counts them for the account itself but never lets them unlock anything else, and explains why in the drill.
+- **"Gather these first" follows the route actually used**: an authenticator restored from its backup account, a number moved to a new eSIM, the one written copy the reader can reach.
+- **Whether the handover file is current** is decided by a fingerprint of its content, not timestamps, so undo and reloads can't fool it.
+- **The read-only copy opened from a handover file** can't be saved unencrypted with Ctrl+S, doesn't write preferences, and prints the guide as handed over.
+- **The file name no longer names the recipient**, and the app finds its own stylesheet by id.
+- **Names with `$` patterns** appear exactly as typed.
+- Dates, plurals and capitalization in the guide and checklist.
+
+The regression tests are in `test/guide.test.mjs`.

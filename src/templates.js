@@ -101,7 +101,7 @@ export const TEMPLATES = [
       W('rcontact', 'Recovery contact confirms it is you', 'recovery', 'instant', [['Recovery contact', ['recovery_contact']]]),
       W('rinfo', 'Account recovery with recovery phone or email', 'recovery', 'slow', [['Code to', ['sms', 'email_code']]], { ...ME, note: 'May work at once, or take 3–5 business days.' }),
       W('appeal', 'Account recovery questionnaire', 'recovery', 'appeal', [], ME),
-      W('inactive', 'Inactive Account Manager sends your data', 'legacy', 'slow', [['Person you named', ['recovery_contact']]], { ...HEIR, note: 'A data download after months of inactivity, not a login.' }),
+      W('inactive', 'Inactive Account Manager sends your data', 'legacy', 'slow', [['Person you named', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'A data download after months of inactivity, not a login.' }),
     ],
   },
   {
@@ -121,7 +121,7 @@ export const TEMPLATES = [
       W('rcontact', 'Recovery contact gives you a code', 'recovery', 'instant', [['Recovery contact', ['recovery_contact']]]),
       W('rkey', 'Recovery key + trusted number', 'recovery', 'instant', [['Recovery key', ['recovery_key']], ['Trusted number', ['sms', 'voice']]]),
       W('recovery', 'Account Recovery (waiting period)', 'recovery', 'slow', [], { ...ME, on: true, unlessWay: ['rkey'], unlessVia: ['security_key'], note: 'Needs any number that can receive texts. Switched off automatically if you set a recovery key or security keys, as Apple does.' }),
-      W('legacy', 'Legacy Contact with access key', 'legacy', 'slow', [['Legacy Contact', ['recovery_contact']]], HEIR),
+      W('legacy', 'Legacy Contact with access key', 'legacy', 'slow', [['Legacy Contact', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'Photos, files and backups, not a login and not Keychain passwords.' }),
     ],
   },
   {
@@ -296,7 +296,7 @@ export const TEMPLATES = [
       W('app', 'Bank app signed in on a device', 'signin', 'instant', [['Signed-in device', ['session']]]),
       W('phone', 'Call the bank and answer identity questions', 'recovery', 'slow', [], { ...ME, on: true }),
       W('branch', 'Visit a branch with photo ID', 'recovery', 'slow', [['Photo ID', ['photo_id']]], { inPerson: true, ...ME }),
-      W('estate', 'Estate process (death certificate, executor papers)', 'legacy', 'slow', [['Executor', ['recovery_contact']]], { ...HEIR, note: 'Funds go to the estate or beneficiaries; nobody gets your login.' }),
+      W('estate', 'Estate process (death certificate, executor papers)', 'legacy', 'slow', [['Executor', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'Funds go to the estate or beneficiaries; nobody gets your login.' }),
     ],
   },
   {
@@ -559,6 +559,7 @@ export function accountFromTemplate(template, id, overrides = {}) {
       inPerson: !!w.inPerson,
       who: w.who || 'both',
       note: w.note || '',
+      ...(w.dataOnly ? { dataOnly: true } : {}),
       ...(w.unlessWay ? { unlessWay: [...w.unlessWay] } : {}),
       ...(w.unlessVia ? { unlessVia: [...w.unlessVia] } : {}),
       enabled: !!w.on,
@@ -566,3 +567,46 @@ export function accountFromTemplate(template, id, overrides = {}) {
     })),
   };
 }
+
+// What the person you leave behind can ask each provider for. Taken from the providers' own
+// help pages (September 2026, see research/services_condensed.txt). Shown in the handover guide.
+export const LEGACY_BY_TEMPLATE = {
+  google: 'If Inactive Account Manager was set up, the people named get a download link after the inactivity period. Otherwise family can use Google\'s deceased-user request to close the account or ask for some data; each case is reviewed and nothing is guaranteed. Google never gives out passwords.',
+  apple: 'A Legacy Contact can request access with the access key and a death certificate. They get photos, messages, notes, files and backups, but not iCloud Keychain passwords or passkeys. Without a Legacy Contact, Apple needs a court order.',
+  microsoft: 'Microsoft has no legacy feature and releases data only under a valid court order. Outlook.com and OneDrive freeze after a year without use.',
+  bitwarden: 'Emergency Access (Premium): a named Bitwarden user can request view or takeover access after the waiting period the owner chose.',
+  onepassword: 'No emergency-access feature. 1Password\'s advice is to leave the printed Emergency Kit with a trusted person or with the will. In a Families account, an organizer can recover a member.',
+  lastpass: 'Emergency Access (Premium or Families): a named LastPass user can request access after the owner\'s waiting period.',
+  applepw: 'A Legacy Contact does not get iCloud Keychain passwords or passkeys. The only ways in are a device that is still signed in and unlocked, or Keychain recovery with a previous device\'s passcode.',
+  protonpass: 'Emergency Access (paid plans): named contacts with Proton accounts can request access after the wait the owner chose.',
+  proton: 'Emergency Access (paid plans): named contacts with Proton accounts can request access after the wait the owner chose.',
+  yahoo: 'Yahoo accounts can\'t be transferred. The executor can ask for closure, and sometimes content, with a letter, the Yahoo ID and proof of authority.',
+  email: 'Most smaller providers, Fastmail included, have no legacy feature. Access usually comes through a recovery email set to someone trusted, or through the executor\'s legal authority.',
+  carrier: 'Carriers don\'t hand over logins. The executor or a family member can move the number to their own account or cancel it, usually with a death certificate. Keep the number active while other accounts still send codes to it.',
+  bank: 'No online access for family. Report the death: money goes to joint owners or named beneficiaries, or to the estate with a death certificate and letters testamentary.',
+  paypal: 'The executor sends PayPal a death certificate, photo ID, proof of executor status and a W-9. PayPal closes the account and sends the balance to the estate.',
+  venmo: 'Venmo and Cash App don\'t hand over access. Family contacts support with a death certificate; Cash App\'s estate services also need photo ID and probate or small-estate papers.',
+  coinbase: 'No beneficiary option. The claimant opens their own Coinbase account and submits the Executor Services form with a death certificate and probate documents.',
+  github: 'A named account successor can take over repositories. Otherwise an authorized person with documents can ask GitHub to decide what happens, case by case.',
+  meta: 'Facebook: a legacy contact can manage a memorialized profile but can\'t log in or read messages. Instagram: anyone can request memorialization with proof of death; family can request removal.',
+  x: 'X gives no access. Family or the estate can ask for deactivation with photo ID and a death certificate.',
+  linkedin: 'Anyone can report a member as deceased to memorialize the profile. Closure needs court-issued letters.',
+  discord: 'Discord and Reddit give no access. Family can ask Discord to delete the account with a death certificate. Whoever controls the account\'s email can reset the password.',
+  whatsapp: 'No next-of-kin process. Messages live on the phone and in its Google or iCloud backup, so you need the phone, the same number and any backup password.',
+  amazon: 'Amazon bereavement support (bereavement-support-cs@amazon.com) can end subscriptions and close the account with a death certificate and the account\'s email or phone.',
+  aws: 'No legacy feature. In practice access follows the root email inbox, the account phone number and the password.',
+  registrar: 'Renew domains so they don\'t lapse. GoDaddy\'s estate route is the Regain Access form with a death certificate, proof of authority and photo ID; other registrars handle it through support.',
+  logingov: 'Login.gov can\'t act for survivors. Deal with each agency (SSA, VA and others) directly.',
+  idme: 'No survivor process. Deal with each agency (IRS, SSA, VA, your state) directly.',
+  'email-reset': 'These reset by email: whoever can get into that email can usually get in here.',
+};
+
+// What the owner wants done with each account.
+export const WISHES = {
+  keep: 'Keep it running',
+  save: 'Save what matters, then close it',
+  close: 'Close it',
+  money: 'Move the money out',
+  memorial: 'Memorialize it',
+  transfer: 'Hand it over to someone',
+};

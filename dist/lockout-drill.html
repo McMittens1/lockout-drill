@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Simulate losing your phone, your home or your memory and see exactly which accounts you'd be locked out of, why, and which fix works. Runs offline in one file.">
+<meta name="description" content="An account continuity plan: simulate losing your phone, your home or your memory, see which accounts you'd be locked out of and which fix works, and leave a step-by-step handover guide for someone you trust. Runs offline in one file.">
 <title>Lockout Drill</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1' y='1' width='30' height='30' rx='8' fill='%231a1c20'/%3E%3Cpath d='M11 14v-3a5 5 0 0 1 9.4-2.4' fill='none' stroke='%23f4f2ec' stroke-width='2.4' stroke-linecap='round'/%3E%3Crect x='8.5' y='14' width='15' height='11' rx='2.2' fill='%23f4f2ec'/%3E%3C/svg%3E">
-<style>:root {
+<style id="app-style">:root {
   --bg: #f4f2ec;
   --panel: #fffefa;
   --sunk: #efece4;
@@ -93,6 +93,9 @@ input[type=text], input[type=password], input[type=number], input[type=search], 
   border: 1px solid var(--line-2); border-radius: var(--radius-s); background: var(--panel);
   padding: 6px 9px; min-height: 34px; max-width: 100%;
 }
+textarea { width: 100%; resize: vertical; line-height: 1.45; font-weight: 400; }
+.linkish { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; color: inherit; display: inline-flex; align-items: center; gap: 6px; text-align: left; }
+.linkish:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); }
 input[type=text]:focus, input[type=password]:focus, input[type=number]:focus, input[type=search]:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-bg); }
 select { padding-right: 24px; }
 label.check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 14px; color: var(--ink-2); }
@@ -129,6 +132,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 20px 80px; }
   border-radius: var(--radius); padding: 10px 14px; margin-bottom: 18px; font-size: 14px; flex-wrap: wrap;
 }
 .banner .grow { flex: 1; min-width: 200px; }
+.banner.warn { background: var(--slow-bg); }
+.banner.warn > svg.i { color: var(--slow); }
 
 /* ---------- State chips ---------- */
 .st { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 650; padding: 2px 8px 2px 6px; border-radius: 999px; white-space: nowrap; }
@@ -236,6 +241,9 @@ details.sub[open] > summary::before { content: "▾ "; }
 .thing .attrs { grid-column: 2 / span 2; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
 .thing .attrs label.f { display: inline-flex; align-items: center; gap: 6px; }
 .thing .attrs select { min-height: 30px; padding: 3px 24px 3px 7px; font-size: 13.5px; }
+.thing .attrs label.tnote { flex: 1 1 100%; }
+.thing .attrs label.tnote input { flex: 1; min-height: 30px; padding: 3px 8px; font-size: 13.5px; }
+.thing .attrs .addnote { padding: 2px 6px; color: var(--muted); }
 .chips { display: inline-flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 1px 4px 1px 9px; font-size: 13px; }
 .chip button { border: 0; background: transparent; cursor: pointer; color: var(--muted); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
@@ -277,6 +285,9 @@ dialog::backdrop { background: rgba(15, 15, 10, .45); }
 .tpl:hover, .tpl:focus-visible { border-color: var(--accent); }
 .tpl b { display: block; font-size: 14px; }
 .tpl span { font-size: 12.5px; color: var(--muted); }
+.ho-acct { border-top: 1px solid var(--line); padding-top: 14px; }
+.field.grow { flex: 1; min-width: 200px; }
+.field.grow input { width: 100%; }
 
 /* ---------- Weak spots ---------- */
 .weak { display: grid; gap: 28px; max-width: 980px; }
@@ -305,12 +316,106 @@ dialog::backdrop { background: rgba(15, 15, 10, .45); }
 .warn-list .lvl { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex: none; }
 .lvl.high { background: var(--locked); } .lvl.medium { background: var(--slow); } .lvl.low { background: var(--line-2); }
 
+/* ---------- Page headers ---------- */
+.page-h { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.page-h h1 { font-size: 30px; letter-spacing: -.02em; font-weight: 740; }
+.page-h .meta { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.page-h .lede { color: var(--ink-2); max-width: 72ch; margin-top: 6px; }
+.page-h .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 650; margin-bottom: 4px; }
+.weak .banner { margin: 0; }
+
+/* ---------- Plan ---------- */
+.plan-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.plan-grid .card { margin: 0; padding: 16px; }
+.card-h h2 { font-size: 17px; letter-spacing: -.01em; }
+.ready { list-style: none; margin: 0; padding: 0; display: grid; }
+.ready li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.ready li:first-child { border-top: 0; }
+.ready .grow { flex: 1; }
+.ready .tick { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none; border: 1.5px solid var(--line-2); }
+.ready li.ok .tick { background: var(--ok-bg); border-color: transparent; color: var(--ok); }
+.ready li.ok .tick svg.i { width: 14px; height: 14px; stroke-width: 2.4; }
+.ready li.ok .grow { color: var(--ink-2); }
+.drill-list { display: grid; }
+.drow {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; text-align: left;
+  border: 0; border-top: 1px solid var(--line); background: transparent; padding: 9px 2px; cursor: pointer; color: var(--ink);
+}
+.drow:first-child { border-top: 0; }
+.drow .ico { grid-row: span 2; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--sunk); color: var(--ink-2); }
+.drow .t { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.drow .m { font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; grid-column: 2; }
+.drow .chev { grid-row: 1 / span 2; grid-column: 3; color: var(--muted); }
+.drow:hover .t { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); }
+.weak section.weak-h { border-top: 1px solid var(--line); padding-top: 22px; }
+.weak section.weak-h > h2 { font-size: 24px; }
+.weak section.weak-h > p.sub { font-size: 16px; color: var(--ink-2); margin: 0; }
+
+/* ---------- Handover ---------- */
+.ho-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ho-grid .card { margin: 0; padding: 16px; display: grid; gap: 14px; }
+.weak .ho-share > h2 { font-size: 17px; margin: 0; }
+.ho-status { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-2); }
+.ho-status.ok { color: var(--ok); }
+.ho-status.warn { color: var(--slow); }
+.ho-opt { display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 12px; flex-wrap: wrap; }
+.ho-opt > div { flex: 1; min-width: 200px; }
+.ho-tips { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.wish { display: grid; grid-template-columns: minmax(140px, 1fr) auto minmax(215px, .9fr) minmax(160px, 1.3fr); gap: 8px 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.wish:first-child { border-top: 0; }
+.wish .wn { font-weight: 600; min-width: 0; }
+.wish select, .wish .wnote { width: 100%; min-height: 32px; font-size: 13.5px; }
+.paper { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 32px 36px; box-shadow: var(--shadow); max-width: 820px; }
+.paper.solo { margin: 0 auto; }
+
+/* ---------- The handover guide ---------- */
+.guide { display: grid; gap: 24px; font-size: 15.5px; line-height: 1.55; }
+.weak .guide section > h2, .guide section > h2 { font-size: 19px; margin-bottom: 10px; letter-spacing: -.01em; }
+.guide h3 { font-size: 16px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.g-head h1 { font-size: 30px; letter-spacing: -.02em; font-weight: 740; }
+.g-head .g-for { font-size: 17px; color: var(--ink-2); margin-top: 2px; }
+.g-head .meta { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+.g-warn { background: var(--slow-bg); border-radius: var(--radius-s); padding: 8px 12px; font-size: 14px; }
+.g-letter { margin: 0; border-left: 3px solid var(--accent); background: var(--accent-bg); padding: 12px 16px; border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+.g-letter p { white-space: pre-wrap; }
+.g-letter footer { margin-top: 6px; color: var(--ink-2); font-style: italic; }
+.g-lede { color: var(--ink-2); }
+.g-sum { margin-top: 8px; font-weight: 600; }
+.g-tips { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
+.g-gather { list-style: none; margin: 0; padding: 0; display: grid; border: 1px solid var(--line); border-radius: var(--radius); }
+.g-gather li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 12px; border-top: 1px solid var(--line); }
+.g-gather li:first-child { border-top: 0; }
+.g-gather .gk { color: var(--muted); padding-top: 2px; }
+.g-gather .gw { font-size: 14px; color: var(--ink-2); }
+.g-gather .gn { font-size: 14px; color: var(--ink); margin-top: 2px; }
+.g-gather .gs { font-size: 12.5px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+.g-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.g-step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; }
+.g-n { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.g-body { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.g-step:last-child .g-body { border-bottom: 0; padding-bottom: 0; }
+.g-how { font-size: 15px; }
+.g-ref { color: var(--muted); }
+.g-wish { background: var(--sunk); border-radius: var(--radius-s); padding: 8px 12px; font-size: 14.5px; display: grid; gap: 4px; }
+.g-pre { white-space: pre-wrap; }
+.g-legacy { font-size: 13.5px; color: var(--muted); }
+.g-legacy b { color: var(--ink-2); font-weight: 600; }
+.g-blocked { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.g-blocked li { display: grid; gap: 6px; border-left: 3px solid var(--locked); padding-left: 12px; }
+.g-appendix details { border-top: 1px solid var(--line); padding: 8px 0; }
+.g-appendix summary { cursor: pointer; font-weight: 600; }
+.g-appendix summary .st { margin-left: 4px; vertical-align: 1px; }
+.g-appendix details ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); display: grid; gap: 4px; }
+.g-appendix details ul ul { margin-top: 2px; }
+.g-foot { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+
 /* ---------- Welcome & quick start ---------- */
 .welcome { max-width: 760px; margin: 7vh auto 0; display: grid; gap: 22px; }
 .welcome h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -.03em; line-height: 1.1; font-weight: 760; }
 .welcome .lede { font-size: 18px; color: var(--ink-2); max-width: 62ch; }
 .welcome .cta { display: flex; gap: 10px; flex-wrap: wrap; }
-.steps3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.steps3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 10px; }
 .steps3 div { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; font-size: 14px; color: var(--ink-2); }
 .steps3 b { display: block; color: var(--ink); margin-bottom: 4px; font-size: 14.5px; }
 .privacy { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--muted); }
@@ -338,6 +443,9 @@ dialog::backdrop { background: rgba(15, 15, 10, .45); }
   .scenarios h2 { grid-column: 1 / -1; }
   .setup { grid-template-columns: 1fr; }
   .status { display: none; }
+  .plan-grid, .ho-grid { grid-template-columns: 1fr; }
+  .wish { grid-template-columns: minmax(0, 1fr) auto; }
+  .wish select, .wish .wnote { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
   main { padding: 16px 16px 80px; }
@@ -364,10 +472,23 @@ dialog::backdrop { background: rgba(15, 15, 10, .45); }
   .fix .fa { grid-row: auto; grid-column: 1; }
   .acct { grid-template-columns: auto minmax(0, 1fr) auto; }
   .acct .st { display: none; }
+  .page-h h1, .g-head h1 { font-size: 25px; }
+  .paper { padding: 20px 16px; border-radius: var(--radius); }
+  .g-step { grid-template-columns: 1fr; gap: 6px; }
+  .g-gather li { grid-template-columns: 22px minmax(0, 1fr); }
+  .g-gather .gs { grid-column: 2; }
 }
 
 /* ---------- Print: the recovery plan ---------- */
 @media print {
+  /* Paper is white whatever the screen theme: pin a high-contrast palette (this selector list
+     outranks the dark-theme rules above). */
+  :root, :root:not([data-theme="light"]) {
+    --bg: #fff; --panel: #fff; --sunk: #f1f1f1; --ink: #000; --ink-2: #222; --muted: #444;
+    --line: #bbb; --line-2: #999; --accent: #000; --accent-2: #000; --accent-bg: #fff; --accent-ink: #fff;
+    --ok: #000; --ok-bg: #fff; --slow: #000; --slow-bg: #fff; --appeal: #000; --appeal-bg: #fff; --locked: #000; --locked-bg: #fff;
+    color-scheme: light;
+  }
   body { background: #fff; color: #000; font-size: 11pt; }
   #app, .toast, dialog { display: none !important; }
   #print { display: block; }
@@ -377,6 +498,24 @@ dialog::backdrop { background: rgba(15, 15, 10, .45); }
   #print td, #print th { border: 1px solid #bbb; padding: 3pt 5pt; text-align: left; vertical-align: top; }
   #print .warnbox { border: 1.5px solid #000; padding: 6pt 8pt; margin: 8pt 0; font-size: 10pt; }
   #print ul { margin: 2pt 0; padding-left: 14pt; }
+  #print .guide { display: block; font-size: 10.5pt; line-height: 1.4; color: #000; }
+  #print .guide > * + * { margin-top: 12pt; }
+  #print .guide h1 { font-size: 20pt; }
+  #print .guide h2 { font-size: 13pt; }
+  #print .guide h3 { font-size: 11.5pt; display: block; margin: 0; }
+  #print .guide .st { background: none; color: #000; border: 1px solid #888; padding: 0 5pt; font-size: 8.5pt; }
+  #print .guide .st svg { display: none; }
+  #print .guide svg.i { width: 11pt; height: 11pt; }
+  #print .g-letter { background: none; border-left: 2pt solid #000; }
+  #print .g-wish { background: none; border: 1px solid #bbb; }
+  #print .g-warn { background: none; border: 1.5px solid #000; }
+  #print .g-n { background: none; color: #000; border: 1.5px solid #000; }
+  #print .g-step, #print .g-gather li, #print .g-blocked li, #print .g-appendix details { break-inside: avoid; }
+  #print .g-legacy, #print .g-ref, #print .note, #print .g-foot, #print .gs, #print .gw { color: #333; }
+  #print .g-appendix summary { list-style: none; }
+  #print .g-appendix summary::-webkit-details-marker { display: none; }
+  #print .g-blocked li { border-left: 2pt solid #000; }
+  #print .guide p, #print .guide li { orphans: 3; widows: 3; }
 }
 </style>
 </head>
@@ -534,6 +673,7 @@ function compile(profile) {
         direct: false,
         inPerson: !!w.inPerson,
         who: w.who || 'both',
+        ...(w.dataOnly ? { dataOnly: true } : {}),
         steps: (w.steps || []).map(s => ({
           label: s.label,
           types: s.types,
@@ -595,6 +735,7 @@ function prepare(graph) {
   const nodes = ids.map(id => graph.nodes.get(id));
   const ways = nodes.map(n => n.ways.map(w => ({
     w,
+    dataOnly: !!w.dataOnly,
     cap: SPEED_CAP[w.speed],
     steps: w.steps.map(s => Int32Array.from(s.anyOf.map(a => index.get(a.ref)).filter(i => i !== undefined))),
   })));
@@ -607,6 +748,11 @@ function prepare(graph) {
 // Worklist propagation from all-locked upward (least fixed point). Every time a node rises we
 // stamp it with a strictly increasing clock; a node's value is always computed from values that
 // were stamped earlier, so explanations that only follow earlier stamps are well-founded.
+//
+// Some routes hand over an account's data or money but not a way to sign in (Google's Inactive
+// Account Manager, Apple's Legacy Contact, a bank's estate process). They count for the account
+// itself but can never unlock anything else: the fixed point runs without them (`use`), then they
+// lift only their own account, stamped after everything else.
 function run(fast, ctx) {
   const n = fast.ids.length;
   const st = new Uint8Array(n);
@@ -627,7 +773,7 @@ function run(fast, ctx) {
     const ws = fast.ways[i];
     for (let k = 0; k < ws.length && v < OK; k++) {
       const w = ws[k];
-      if (!wayApplies(node, w.w, ctx)) continue;
+      if (w.dataOnly || !wayApplies(node, w.w, ctx)) continue;
       let x = w.cap;
       for (let s = 0; s < w.steps.length && x > v; s++) {
         let best = LOCKED;
@@ -645,20 +791,45 @@ function run(fast, ctx) {
       for (let k = 0; k < d.length; k++) if (!inQ[d[k]]) push(d[k]);
     }
   }
-  return { st, first };
+  const use = st.slice();
+  for (let i = 0; i < n; i++) {
+    const node = fast.nodes[i];
+    let v = st[i];
+    for (const w of fast.ways[i]) {
+      if (!w.dataOnly || v === OK || !wayApplies(node, w.w, ctx)) continue;
+      let x = w.cap;
+      for (let s = 0; s < w.steps.length && x > v; s++) {
+        let best = LOCKED;
+        for (const a of w.steps[s]) if (use[a] > best) best = use[a];
+        if (best < x) x = best;
+      }
+      if (x > v) v = x;
+    }
+    if (v > st[i]) {
+      clock++;
+      for (let l = st[i] + 1; l <= v; l++) first[i * 4 + l] = clock;
+      st[i] = v;
+    }
+  }
+  return { st, first, use };
 }
+
+// What a node is worth to the nodes that depend on it (data-only routes excluded).
+const usable = (sim, id) => (sim.use || sim.state).get(id) ?? LOCKED;
 
 function simulate(graph, ctxOrOpts) {
   const ctx = ctxOrOpts && ctxOrOpts.lost instanceof Set ? ctxOrOpts : makeContext(ctxOrOpts);
   const fast = prepare(graph);
-  const { st, first } = run(fast, ctx);
+  const { st, first, use } = run(fast, ctx);
   const state = new Map();
+  const useMap = new Map();
   const firstMap = new Map();
   fast.ids.forEach((id, i) => {
     state.set(id, st[i]);
+    useMap.set(id, use[i]);
     firstMap.set(id, [first[i * 4], first[i * 4 + 1], first[i * 4 + 2], first[i * 4 + 3]]);
   });
-  return { ctx, state, first: firstMap };
+  return { ctx, state, use: useMap, first: firstMap };
 }
 
 // Array-level simulation for the analysis loops (no Map conversion).
@@ -684,14 +855,15 @@ function derivation(graph, sim, id, depth = 6) {
     out.base = true;
     return out;
   }
-  for (const w of node.ways) {
+  const ordered = [...node.ways.filter(w => !w.dataOnly), ...node.ways.filter(w => w.dataOnly)];
+  for (const w of ordered) {
     if (!wayApplies(node, w, sim.ctx) || SPEED_CAP[w.speed] < level) continue;
     const picks = [];
     let ok = true;
     for (const s of w.steps) {
       let pick = null;
       for (const alt of s.anyOf) {
-        if (sim.state.get(alt.ref) >= level && sim.first.get(alt.ref)[level] < at) {
+        if (usable(sim, alt.ref) >= level && sim.first.get(alt.ref)[level] < at) {
           if (!pick || sim.first.get(alt.ref)[level] < sim.first.get(pick.ref)[level]) pick = alt;
         }
       }
@@ -699,7 +871,7 @@ function derivation(graph, sim, id, depth = 6) {
       picks.push({ step: s.label, via: pick.via, ref: pick.ref, label: refLabel(graph, pick.ref), sub: depth > 0 ? derivation(graph, sim, pick.ref, depth - 1) : null });
     }
     if (ok) {
-      out.way = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind };
+      out.way = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, ...(w.dataOnly ? { dataOnly: true } : {}) };
       out.picks = picks;
       return out;
     }
@@ -708,13 +880,15 @@ function derivation(graph, sim, id, depth = 6) {
 }
 
 // Why a node isn't better than it is: every applicable way with its failing steps, recursing
-// into derived nodes. Revisiting a node on the current path is reported as a cycle.
+// into derived nodes. Revisiting a node on the current path is reported as a cycle. Nodes met as
+// options are judged by what they are worth to others (`use`): their data-only routes don't count.
 function blockers(graph, sim, id, opts = {}) {
   const depth = opts.depth ?? 5;
   const target = opts.target ?? OK;
   const path = opts.path ?? [];
+  const asOption = !!opts.use;
   const node = graph.nodes.get(id);
-  const state = sim.state.get(id);
+  const state = asOption ? usable(sim, id) : sim.state.get(id);
   const out = { id, label: node?.label ?? id, state, lost: sim.ctx.lost.has(id) || (!!node?.derived && sim.ctx.lost.has(node.derived)), ways: [], cycle: null };
   if (!node || state >= target) return out;
   if (path.includes(id)) {
@@ -724,20 +898,20 @@ function blockers(graph, sim, id, opts = {}) {
   if (depth <= 0) { out.truncated = true; return out; }
   const nextPath = [...path, id];
   for (const w of node.ways) {
-    const applies = wayApplies(node, w, sim.ctx);
-    const value = applies ? wayValue(w, r => sim.state.get(r) ?? LOCKED) : LOCKED;
-    const wayOut = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, value, disabled: applies ? null : disabledReason(node, w, sim.ctx), failing: [] };
+    const applies = wayApplies(node, w, sim.ctx) && !(asOption && w.dataOnly);
+    const value = applies ? wayValue(w, r => usable(sim, r)) : LOCKED;
+    const wayOut = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, value, disabled: applies ? null : (asOption && w.dataOnly && wayApplies(node, w, sim.ctx) ? 'data-only' : disabledReason(node, w, sim.ctx)), failing: [] };
     if (applies) {
       const need = Math.min(target, SPEED_CAP[w.speed]);
       for (const s of w.steps) {
-        const best = Math.max(LOCKED, ...s.anyOf.map(a => sim.state.get(a.ref) ?? LOCKED));
+        const best = Math.max(LOCKED, ...s.anyOf.map(a => usable(sim, a.ref)));
         if (best >= need) continue;
         wayOut.failing.push({
           step: s.label,
           empty: s.anyOf.length === 0,
           options: s.anyOf.map(a => ({
-            ref: a.ref, via: a.via, label: refLabel(graph, a.ref), state: sim.state.get(a.ref) ?? LOCKED,
-            why: blockers(graph, sim, a.ref, { depth: depth - 1, target: need, path: nextPath }),
+            ref: a.ref, via: a.via, label: refLabel(graph, a.ref), state: usable(sim, a.ref),
+            why: blockers(graph, sim, a.ref, { depth: depth - 1, target: need, path: nextPath, use: true }),
           })),
         });
       }
@@ -1142,12 +1316,12 @@ function topPlace(byId, at) {
 // Only steps that actually hold a node below the level it needs are followed, and that level is
 // carried down each edge (capped by the way's speed).
 function stuckLoop(graph, sim, id, target = OK) {
-  const st = (r) => sim.state.get(r) ?? LOCKED;
+  const st = (r) => usable(sim, r);
   const next = (nid, t) => {
     const n = graph.nodes.get(nid);
     const out = [];
     for (const w of n?.ways || []) {
-      if (!wayApplies(n, w, sim.ctx)) continue;
+      if (w.dataOnly || !wayApplies(n, w, sim.ctx)) continue;
       const need = Math.min(t, SPEED_CAP[w.speed]);
       if (need <= st(nid)) continue; // this way couldn't lift the node above where it already is
       const bests = w.steps.map(s => s.anyOf.reduce((m, a) => Math.max(m, st(a.ref)), LOCKED));
@@ -1303,7 +1477,7 @@ const TEMPLATES = [
       W('rcontact', 'Recovery contact confirms it is you', 'recovery', 'instant', [['Recovery contact', ['recovery_contact']]]),
       W('rinfo', 'Account recovery with recovery phone or email', 'recovery', 'slow', [['Code to', ['sms', 'email_code']]], { ...ME, note: 'May work at once, or take 3–5 business days.' }),
       W('appeal', 'Account recovery questionnaire', 'recovery', 'appeal', [], ME),
-      W('inactive', 'Inactive Account Manager sends your data', 'legacy', 'slow', [['Person you named', ['recovery_contact']]], { ...HEIR, note: 'A data download after months of inactivity, not a login.' }),
+      W('inactive', 'Inactive Account Manager sends your data', 'legacy', 'slow', [['Person you named', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'A data download after months of inactivity, not a login.' }),
     ],
   },
   {
@@ -1323,7 +1497,7 @@ const TEMPLATES = [
       W('rcontact', 'Recovery contact gives you a code', 'recovery', 'instant', [['Recovery contact', ['recovery_contact']]]),
       W('rkey', 'Recovery key + trusted number', 'recovery', 'instant', [['Recovery key', ['recovery_key']], ['Trusted number', ['sms', 'voice']]]),
       W('recovery', 'Account Recovery (waiting period)', 'recovery', 'slow', [], { ...ME, on: true, unlessWay: ['rkey'], unlessVia: ['security_key'], note: 'Needs any number that can receive texts. Switched off automatically if you set a recovery key or security keys, as Apple does.' }),
-      W('legacy', 'Legacy Contact with access key', 'legacy', 'slow', [['Legacy Contact', ['recovery_contact']]], HEIR),
+      W('legacy', 'Legacy Contact with access key', 'legacy', 'slow', [['Legacy Contact', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'Photos, files and backups, not a login and not Keychain passwords.' }),
     ],
   },
   {
@@ -1498,7 +1672,7 @@ const TEMPLATES = [
       W('app', 'Bank app signed in on a device', 'signin', 'instant', [['Signed-in device', ['session']]]),
       W('phone', 'Call the bank and answer identity questions', 'recovery', 'slow', [], { ...ME, on: true }),
       W('branch', 'Visit a branch with photo ID', 'recovery', 'slow', [['Photo ID', ['photo_id']]], { inPerson: true, ...ME }),
-      W('estate', 'Estate process (death certificate, executor papers)', 'legacy', 'slow', [['Executor', ['recovery_contact']]], { ...HEIR, note: 'Funds go to the estate or beneficiaries; nobody gets your login.' }),
+      W('estate', 'Estate process (death certificate, executor papers)', 'legacy', 'slow', [['Executor', ['recovery_contact']]], { ...HEIR, dataOnly: true, note: 'Funds go to the estate or beneficiaries; nobody gets your login.' }),
     ],
   },
   {
@@ -1761,6 +1935,7 @@ function accountFromTemplate(template, id, overrides = {}) {
       inPerson: !!w.inPerson,
       who: w.who || 'both',
       note: w.note || '',
+      ...(w.dataOnly ? { dataOnly: true } : {}),
       ...(w.unlessWay ? { unlessWay: [...w.unlessWay] } : {}),
       ...(w.unlessVia ? { unlessVia: [...w.unlessVia] } : {}),
       enabled: !!w.on,
@@ -1769,7 +1944,50 @@ function accountFromTemplate(template, id, overrides = {}) {
   };
 }
 
-return { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, accepts, inferVia, templateForDomain, accountFromTemplate };
+// What the person you leave behind can ask each provider for. Taken from the providers' own
+// help pages (September 2026, see research/services_condensed.txt). Shown in the handover guide.
+const LEGACY_BY_TEMPLATE = {
+  google: 'If Inactive Account Manager was set up, the people named get a download link after the inactivity period. Otherwise family can use Google\'s deceased-user request to close the account or ask for some data; each case is reviewed and nothing is guaranteed. Google never gives out passwords.',
+  apple: 'A Legacy Contact can request access with the access key and a death certificate. They get photos, messages, notes, files and backups, but not iCloud Keychain passwords or passkeys. Without a Legacy Contact, Apple needs a court order.',
+  microsoft: 'Microsoft has no legacy feature and releases data only under a valid court order. Outlook.com and OneDrive freeze after a year without use.',
+  bitwarden: 'Emergency Access (Premium): a named Bitwarden user can request view or takeover access after the waiting period the owner chose.',
+  onepassword: 'No emergency-access feature. 1Password\'s advice is to leave the printed Emergency Kit with a trusted person or with the will. In a Families account, an organizer can recover a member.',
+  lastpass: 'Emergency Access (Premium or Families): a named LastPass user can request access after the owner\'s waiting period.',
+  applepw: 'A Legacy Contact does not get iCloud Keychain passwords or passkeys. The only ways in are a device that is still signed in and unlocked, or Keychain recovery with a previous device\'s passcode.',
+  protonpass: 'Emergency Access (paid plans): named contacts with Proton accounts can request access after the wait the owner chose.',
+  proton: 'Emergency Access (paid plans): named contacts with Proton accounts can request access after the wait the owner chose.',
+  yahoo: 'Yahoo accounts can\'t be transferred. The executor can ask for closure, and sometimes content, with a letter, the Yahoo ID and proof of authority.',
+  email: 'Most smaller providers, Fastmail included, have no legacy feature. Access usually comes through a recovery email set to someone trusted, or through the executor\'s legal authority.',
+  carrier: 'Carriers don\'t hand over logins. The executor or a family member can move the number to their own account or cancel it, usually with a death certificate. Keep the number active while other accounts still send codes to it.',
+  bank: 'No online access for family. Report the death: money goes to joint owners or named beneficiaries, or to the estate with a death certificate and letters testamentary.',
+  paypal: 'The executor sends PayPal a death certificate, photo ID, proof of executor status and a W-9. PayPal closes the account and sends the balance to the estate.',
+  venmo: 'Venmo and Cash App don\'t hand over access. Family contacts support with a death certificate; Cash App\'s estate services also need photo ID and probate or small-estate papers.',
+  coinbase: 'No beneficiary option. The claimant opens their own Coinbase account and submits the Executor Services form with a death certificate and probate documents.',
+  github: 'A named account successor can take over repositories. Otherwise an authorized person with documents can ask GitHub to decide what happens, case by case.',
+  meta: 'Facebook: a legacy contact can manage a memorialized profile but can\'t log in or read messages. Instagram: anyone can request memorialization with proof of death; family can request removal.',
+  x: 'X gives no access. Family or the estate can ask for deactivation with photo ID and a death certificate.',
+  linkedin: 'Anyone can report a member as deceased to memorialize the profile. Closure needs court-issued letters.',
+  discord: 'Discord and Reddit give no access. Family can ask Discord to delete the account with a death certificate. Whoever controls the account\'s email can reset the password.',
+  whatsapp: 'No next-of-kin process. Messages live on the phone and in its Google or iCloud backup, so you need the phone, the same number and any backup password.',
+  amazon: 'Amazon bereavement support (bereavement-support-cs@amazon.com) can end subscriptions and close the account with a death certificate and the account\'s email or phone.',
+  aws: 'No legacy feature. In practice access follows the root email inbox, the account phone number and the password.',
+  registrar: 'Renew domains so they don\'t lapse. GoDaddy\'s estate route is the Regain Access form with a death certificate, proof of authority and photo ID; other registrars handle it through support.',
+  logingov: 'Login.gov can\'t act for survivors. Deal with each agency (SSA, VA and others) directly.',
+  idme: 'No survivor process. Deal with each agency (IRS, SSA, VA, your state) directly.',
+  'email-reset': 'These reset by email: whoever can get into that email can usually get in here.',
+};
+
+// What the owner wants done with each account.
+const WISHES = {
+  keep: 'Keep it running',
+  save: 'Save what matters, then close it',
+  close: 'Close it',
+  money: 'Move the money out',
+  memorial: 'Memorialize it',
+  transfer: 'Hand it over to someone',
+};
+
+return { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, accepts, inferVia, templateForDomain, accountFromTemplate, LEGACY_BY_TEMPLATE, WISHES };
 })();
 
 const __m_csv = (() => {
@@ -2014,12 +2232,12 @@ function sampleProfile() {
   const T = (id, kind, name, extra = {}) => ({ id, kind, name, ...extra });
   const things = [
     T('home', 'place', 'Home', { home: true }),
-    T('drawer', 'place', 'Desk drawer', { inside: 'home' }),
+    T('drawer', 'place', 'Desk drawer', { inside: 'home', note: 'Left side of the desk in the study. The key hangs inside the pantry door.' }),
     T('iphone', 'phone', 'iPhone', { at: 'carried', unlock: 'pin' }),
     T('macbook', 'computer', 'MacBook', { at: 'home', unlock: 'macpw' }),
     T('yubikey', 'seckey', 'YubiKey (on keychain)', { at: 'carried' }),
     T('license', 'photoid', "Driver's license", { at: 'carried' }),
-    T('codes', 'paper', 'Printed Google backup codes', { at: 'drawer' }),
+    T('codes', 'paper', 'Printed Google backup codes', { at: 'drawer', note: 'In the blue folder at the back.' }),
     T('pin', 'secret', 'iPhone passcode', { shared: true }),
     T('macpw', 'secret', 'MacBook password'),
     T('bwpw', 'secret', 'Bitwarden master password'),
@@ -2071,7 +2289,28 @@ function sampleProfile() {
     }, { name: 'Everything that resets by Gmail', count: 38, important: false }),
   ];
 
-  return { app: 'lockout-drill', schema: 1, owner: 'Alex', trusted: 'Sam', sample: true, things, accounts };
+  // What Alex wants done, for the handover guide.
+  const wishes = {
+    google: ['save', 'Download the photos first (Google Takeout), then close it.'],
+    bitwarden: ['keep', 'Every other password is in here. Keep it until everything below is sorted.'],
+    apple: ['save', 'The family photo library is in iCloud Photos.'],
+    verizon: ['keep', 'Keep my number active until the other accounts no longer send codes to it.'],
+    bank: ['money', 'Checking and savings. Sam is the payable-on-death beneficiary on savings.'],
+    coinbase: ['money', 'A small amount of bitcoin. Use their Executor Services form.'],
+    github: ['close', ''],
+    rest: ['close', 'Shopping, streaming and old forums. Cancel anything that bills monthly.'],
+  };
+  for (const a of accounts) {
+    const [wish, note] = wishes[a.id] || [];
+    if (wish) a.wish = wish;
+    if (note) a.note = note;
+  }
+  const handover = {
+    note: 'Sam, start with the desk drawer at home. Most things run through my Bitwarden vault, so get into that first.',
+    contacts: 'Estate lawyer: Dana Reyes. My will is with her.',
+  };
+
+  return { app: 'lockout-drill', schema: 1, owner: 'Alex', trusted: 'Sam', sample: true, things, accounts, handover };
 }
 
 return { accountFrom, sampleProfile };
@@ -2425,6 +2664,329 @@ function applyFix(profile, fix) {
 return { uid, candidateFixes, verifiedFixes, bestFixes, applyFix };
 })();
 
+const __m_guide = (() => {
+// The handover guide: what your trusted person can reach after you're gone, and the order to do
+// it in. Built from the heir drill, so every step is a route the engine proved works with only
+// what that person can get to.
+
+const { compile, simulate, derivation, rootCauses, LOCKED, OK, PHYSICAL_KINDS, DEVICE_KINDS } = __m_engine;
+const { VIA, SPEEDS, LEGACY_BY_TEMPLATE, WISHES } = __m_templates;
+
+const STALE_DAYS = 180;
+const GATHER_KINDS = new Set(['phone', 'computer', 'tablet', 'seckey', 'paper', 'photoid', 'secret', 'number', 'authapp']);
+const HANDOVER_ID = 'lockout-handover';
+
+const phrase = (via, label) => (VIA[via]?.phrase || '{x}').replace('{x}', () => label);
+
+function placePath(things, id) {
+  const parts = [];
+  const seen = new Set();
+  for (let cur = things.get(id); cur && !seen.has(cur.id); cur = things.get(cur.inside)) {
+    seen.add(cur.id);
+    parts.unshift(cur.name);
+    if (!cur.inside) break;
+  }
+  return parts.join(' › ');
+}
+
+function daysSince(iso, now = new Date()) {
+  const t = Date.parse(iso || '');
+  return Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / 86400000)) : null;
+}
+
+function ago(days) {
+  if (days === null || days === undefined) return 'never';
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 45) return `${days} days ago`;
+  const months = Math.round(days / 30.4);
+  if (months < 18) return months <= 1 ? 'a month ago' : `${months} months ago`;
+  const years = Math.round(days / 365);
+  return years <= 1 ? 'a year ago' : `${years} years ago`;
+}
+
+// A fingerprint of everything a handover file carries, to tell whether the last file is current.
+// Key order doesn't matter; bookkeeping fields are left out.
+const NOT_CONTENT = new Set(['updatedAt', 'sample', 'savedAt', 'savedHash']);
+function canon(v) {
+  if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+  if (v && typeof v === 'object') {
+    return '{' + Object.keys(v).filter(k => !NOT_CONTENT.has(k) && v[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+  }
+  return JSON.stringify(v ?? null);
+}
+function planFingerprint(profile) {
+  const s = canon(profile);
+  let a = 0x811c9dc5, b = 0x9747b28c;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x5bd1e995);
+  }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+}
+function handoverFresh(profile) {
+  const h = profile.handover;
+  return !!h?.savedHash && h.savedHash === planFingerprint(profile);
+}
+
+// `preparedAt` dates the guide: the owner's preview and printout are as of now; a handover file
+// is as of when it was made.
+function buildGuide(profile, now = new Date(), { preparedAt } = {}) {
+  const graph = compile(profile);
+  const sim = simulate(graph, { perspective: 'heir' });
+  const things = new Map((profile.things || []).map(t => [t.id, t]));
+  const accounts = profile.accounts || [];
+  const byId = new Map(accounts.map(a => [a.id, a]));
+  const st = (id) => sim.state.get(id) ?? LOCKED;
+  const stamp = (id) => (st(id) > LOCKED ? sim.first.get(id)[st(id)] : Infinity);
+  const isAccount = (id) => graph.nodes.get(id)?.type === 'account';
+  const everyday = profile.owner ? `Kept with ${profile.owner}'s everyday things` : 'Kept with their everyday things';
+
+  const reachable = accounts.filter(a => st(a.id) > LOCKED);
+  const routes = new Map(reachable.map(a => [a.id, derivation(graph, sim, a.id, 8)]));
+
+  // Which other accounts each route relies on (through things too, e.g. an authenticator app
+  // restored from a Google backup). Derivations are well-founded, so this is acyclic.
+  const needs = new Map();
+  for (const a of reachable) {
+    const set = new Set();
+    const walk = (d) => {
+      for (const p of d?.picks || []) {
+        if (isAccount(p.ref)) set.add(p.ref);
+        else walk(p.sub);
+      }
+    };
+    walk(routes.get(a.id));
+    needs.set(a.id, set);
+  }
+
+  // Order: dependencies first, then the order in which things became reachable.
+  const order = [];
+  const done = new Set();
+  const visiting = new Set();
+  // Among steps whose order doesn't matter: what works right away before what takes days.
+  const byStamp = (x, y) => st(y) - st(x) || stamp(x) - stamp(y) || (byId.get(x)?.name || '').localeCompare(byId.get(y)?.name || '');
+  const visit = (id) => {
+    if (done.has(id) || visiting.has(id)) return;
+    visiting.add(id);
+    for (const dep of [...(needs.get(id) || [])].sort(byStamp)) visit(dep);
+    visiting.delete(id);
+    done.add(id);
+    order.push(id);
+  };
+  for (const id of reachable.map(a => a.id).sort(byStamp)) visit(id);
+  const stepOf = new Map(order.map((id, i) => [id, i + 1]));
+
+  // Things to gather first: whatever the routes use, tagged with the first step that needs it.
+  const used = new Map();
+  for (const id of order) {
+    const n = stepOf.get(id);
+    const walk = (d) => {
+      for (const p of d?.picks || []) {
+        if (isAccount(p.ref)) continue;
+        const node = graph.nodes.get(p.ref);
+        const tid = node?.derived || p.ref;
+        if (!used.has(tid)) used.set(tid, n);
+        walk(p.sub);
+      }
+    };
+    walk(routes.get(id));
+  }
+
+  // Where each thing is, worded by the route the drill actually used to reach it (restored from
+  // a backup, a replacement eSIM, the one written copy within reach), or by how it was set up
+  // when it can't be reached at all.
+  const stepNote = (ref) => (isAccount(ref) && stepOf.has(ref) ? ` (step ${stepOf.get(ref)})` : '');
+  const describe = (t) => {
+    const d = st(t.id) > LOCKED ? derivation(graph, sim, t.id, 2) : null;
+    const reach = !!d;
+    if (PHYSICAL_KINDS.has(t.kind)) {
+      const place = t.at && t.at !== 'carried' ? things.get(t.at) : null;
+      const where = place ? placePath(things, place.id) : everyday;
+      let how = null;
+      if (DEVICE_KINDS.has(t.kind) && t.unlock && things.has(t.unlock)) how = `Unlock it with ${things.get(t.unlock).name}.`;
+      return { where, how, placeNote: place?.note || '', reach };
+    }
+    if (t.kind === 'secret') {
+      if (d?.base) return { where: 'You know it', how: null, reach };
+      if (d?.way?.id === 'written' && d.picks?.[0]) return { where: `Written on ${d.picks[0].label}`, how: null, reach };
+      const papers = (t.writtenOn || []).filter(p => things.has(p));
+      return { where: papers.length ? `Written on ${papers.map(p => things.get(p).name).join(' or ')}` : 'Not written down or shared', how: null, reach };
+    }
+    if (t.kind === 'number') {
+      const how = 'Keep this number active: codes are sent to it.';
+      if ((d?.way?.id === 'esim' || d?.way?.id === 'store') && d.picks?.[0]) return { where: `${d.way.label}${stepNote(d.picks[0].ref)}. This takes days.`, how, reach };
+      return { where: t.sim && things.has(t.sim) ? `The SIM is in ${things.get(t.sim).name}.` : '', how, reach };
+    }
+    if (t.kind === 'authapp') {
+      if (d?.way?.id === 'restore' && d.picks?.[0]) {
+        const [backup, secret] = d.picks;
+        return { where: `Restore it on a new phone from its backup in ${backup.label}${stepNote(backup.ref)}${secret ? `, with ${secret.label}` : ''}.`, how: null, reach };
+      }
+      if (d?.way?.id?.startsWith('on:') && d.picks?.[0]) return { where: `On ${d.picks[0].label}`, how: null, reach };
+      const on = (t.devices || []).filter(x => things.has(x)).map(x => things.get(x).name);
+      return { where: on.length ? `On ${on.join(' and ')}` : 'Restored from its backup', how: null, reach };
+    }
+    return { where: '', how: null, reach };
+  };
+
+  const gather = [...used.entries()]
+    .map(([id, step]) => ({ t: things.get(id), step }))
+    .filter(x => x.t && GATHER_KINDS.has(x.t.kind))
+    .sort((x, y) => x.step - y.step || x.t.name.localeCompare(y.t.name))
+    .map(({ t, step }) => ({ id: t.id, kind: t.kind, name: t.name, step, note: t.note || '', ...describe(t) }));
+
+  // Unlock chains the other way: which later steps each account opens.
+  const opens = new Map();
+  for (const [id, set] of needs) for (const dep of set) {
+    if (!opens.has(dep)) opens.set(dep, []);
+    opens.get(dep).push(id);
+  }
+
+  const wishOf = (a) => (a.wish && Object.hasOwn(WISHES, a.wish) ? { wish: a.wish, wishLabel: WISHES[a.wish] } : { wish: '', wishLabel: '' });
+  const legacyOf = (a) => (a.template && Object.hasOwn(LEGACY_BY_TEMPLATE, a.template) ? LEGACY_BY_TEMPLATE[a.template] : '');
+
+  const steps = order.map(id => {
+    const a = byId.get(id);
+    const d = routes.get(id);
+    return {
+      n: stepOf.get(id),
+      id,
+      name: a.name,
+      count: Math.max(1, a.count || 1),
+      important: !!a.important,
+      state: st(id),
+      speed: d?.way ? SPEEDS[d.way.speed]?.label || '' : '',
+      way: d?.way?.label || '',
+      wayKind: d?.way?.kind || '',
+      dataOnly: !!d?.way?.dataOnly,
+      picks: (d?.picks || []).map(p => ({ text: phrase(p.via, p.label), step: isAccount(p.ref) ? stepOf.get(p.ref) : null })),
+      opens: (opens.get(id) || []).sort((x, y) => stepOf.get(x) - stepOf.get(y)).map(x => ({ name: byId.get(x).name, step: stepOf.get(x) })),
+      note: a.note || '',
+      legacy: legacyOf(a),
+      ...wishOf(a),
+    };
+  });
+
+  const blocked = accounts
+    .filter(a => st(a.id) === LOCKED)
+    .sort((x, y) => (y.important - x.important) || x.name.localeCompare(y.name))
+    .map(a => {
+      const rc = rootCauses(graph, sim, a.id, OK);
+      return {
+        id: a.id,
+        name: a.name,
+        count: Math.max(1, a.count || 1),
+        important: !!a.important,
+        reasons: rc.causes.map(c => ({ label: c.label, reason: c.reason })),
+        note: a.note || '',
+        legacy: legacyOf(a),
+        ...wishOf(a),
+      };
+    });
+
+  // The full map: every way into every account, as set up, for whoever wants the detail.
+  const nameOf = (id) => things.get(id)?.name ?? byId.get(id)?.name ?? '?';
+  const map = [...accounts]
+    .sort((x, y) => (y.important - x.important) || x.name.localeCompare(y.name))
+    .map(a => ({
+      id: a.id,
+      name: a.name,
+      count: Math.max(1, a.count || 1),
+      state: st(a.id),
+      ways: a.ways.filter(w => w.enabled !== false).map(w => ({
+        label: w.label,
+        speed: w.speed !== 'instant' ? SPEEDS[w.speed]?.label || '' : '',
+        who: w.who || 'both',
+        steps: w.steps.map(s => ({ label: s.label, options: s.anyOf.map(o => phrase(o.via, nameOf(o.ref))) })),
+      })),
+    }));
+  // Where everything is, including things no step above needed.
+  const inventory = (profile.things || [])
+    .filter(t => GATHER_KINDS.has(t.kind))
+    .map(t => ({ id: t.id, kind: t.kind, name: t.name, note: t.note || '', ...describe(t) }));
+
+  const tally = { now: 0, days: 0, appeal: 0, none: 0, total: 0 };
+  for (const a of accounts) {
+    const c = Math.max(1, a.count || 1);
+    tally.total += c;
+    const s = st(a.id);
+    if (s === OK) tally.now += c; else if (s === 2) tally.days += c; else if (s === 1) tally.appeal += c; else tally.none += c;
+  }
+
+  const reviewedDays = daysSince(profile.reviewedAt, now);
+  return {
+    owner: profile.owner || '',
+    trusted: profile.trusted || '',
+    reviewedAt: profile.reviewedAt || null,
+    reviewedDays,
+    stale: reviewedDays === null || reviewedDays > STALE_DAYS,
+    preparedAt: preparedAt !== undefined ? preparedAt : (profile.handover?.savedAt || null),
+    letter: profile.handover?.note || '',
+    contacts: profile.handover?.contacts || '',
+    gather,
+    steps,
+    blocked,
+    map,
+    inventory,
+    tally,
+    states: sim.state,
+  };
+}
+
+// A short checklist of what makes the handover work.
+function readiness(profile, guide = buildGuide(profile), now = new Date()) {
+  const who = profile.trusted || 'your trusted person';
+  const Who = profile.trusted || 'Your trusted person';
+  const accounts = profile.accounts || [];
+  const reach = (a) => (guide.states.get(a.id) ?? LOCKED) > LOCKED;
+  const items = [];
+  items.push({ key: 'trusted', ok: !!profile.trusted, text: profile.trusted ? `${profile.trusted} is the person you trust with this` : 'Name the person who would handle things', go: 'setup' });
+  const pms = accounts.filter(a => a.category === 'password_manager');
+  if (pms.length) {
+    const missing = pms.filter(a => !reach(a));
+    items.push({ key: 'pm', ok: !missing.length, text: missing.length ? `${Who} can't get into ${missing.map(a => a.name).join(' or ')}` : `${Who} can get into your password manager`, go: 'heir' });
+  }
+  const imp = accounts.filter(a => a.important);
+  if (imp.length) {
+    const r = imp.filter(reach).length;
+    items.push({ key: 'reach', ok: r === imp.length, text: `${Who} can reach ${r} of ${imp.length} important ${imp.length === 1 ? 'account' : 'accounts'}`, go: 'heir' });
+    const w = imp.filter(a => a.wish).length;
+    items.push({ key: 'wishes', ok: w === imp.length, text: `You said what should happen to ${w} of ${imp.length} important ${imp.length === 1 ? 'account' : 'accounts'}`, go: 'handover' });
+  }
+  const note = (profile.handover?.note || '').trim();
+  items.push({ key: 'letter', ok: !!note, text: note ? `You wrote a note for ${who}` : `Write a note for ${who}`, go: 'handover' });
+  const days = daysSince(profile.reviewedAt, now);
+  items.push({ key: 'reviewed', ok: days !== null && days <= STALE_DAYS, text: days === null ? 'Never marked as reviewed' : days <= STALE_DAYS ? `Reviewed ${ago(days)}` : `Last reviewed ${ago(days)}: time for a check`, go: 'review' });
+  const saved = profile.handover?.savedAt;
+  const fresh = handoverFresh(profile);
+  items.push({ key: 'file', ok: fresh, text: !saved ? 'No handover file created yet' : fresh ? 'Your handover file is up to date' : 'Your plan changed after the last handover file', go: 'export' });
+  return items;
+}
+
+// The handover file is the app itself with the encrypted plan embedded, so the person you trust
+// only needs to double-click one file and enter the passphrase. The data goes right after <body>,
+// ahead of the app's script, so it is already parsed when the app starts.
+function makeHandoverHtml(pristine, envelope) {
+  const json = JSON.stringify({ ...envelope, purpose: 'handover' }).replace(/</g, '\\u003c');
+  const tag = `<script type="application/json" id="${HANDOVER_ID}">${json}<\/script>\n`;
+  const m = /<body[^>]*>\n?/i.exec(pristine);
+  if (!m) throw new Error('Could not build the handover file.');
+  const at = m.index + m[0].length;
+  return pristine.slice(0, at) + tag + pristine.slice(at);
+}
+
+// Read the plan embedded in a handover file (the text of its data tag).
+function readHandover(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { return null; }
+  return data && typeof data === 'object' && data.purpose === 'handover' ? data : null;
+}
+
+return { STALE_DAYS, HANDOVER_ID, placePath, daysSince, ago, planFingerprint, handoverFresh, buildGuide, readiness, makeHandoverHtml, readHandover };
+})();
+
 const __m_ui = (() => {
 // Tiny DOM helpers and icons. No framework: views rebuild their DOM from state.
 
@@ -2581,9 +3143,10 @@ const __m_store = (() => {
 // computations.
 
 const { compile, runScenario, scenarioPresets, analyze } = __m_engine;
-const { THING_KINDS, ACCOUNT_CATEGORIES, SPEEDS, WAY_KINDS, VIA } = __m_templates;
+const { THING_KINDS, ACCOUNT_CATEGORIES, SPEEDS, WAY_KINDS, VIA, WISHES, TEMPLATE_BY_ID } = __m_templates;
 const { encryptWith, isEncrypted } = __m_crypto;
 const { verifiedFixes } = __m_advice;
+const { buildGuide } = __m_guide;
 
 const STORE_KEY = 'lockout-drill:v1';
 const PREF_KEY = 'lockout-drill:prefs';
@@ -2591,13 +3154,13 @@ const PREF_KEY = 'lockout-drill:prefs';
 const S = {
   profile: null,
   version: 0,
-  view: 'drill',
+  view: 'plan',
   scenario: 'phone',
   custom: { lost: [], abroad: false, heir: false },
   open: new Set(),
   openDetails: new Set(),
   keyring: null,
-  screen: 'boot', // boot | welcome | quickstart | lock | app
+  screen: 'boot', // boot | welcome | quickstart | lock | app | guidelock | guide
   pendingEnvelope: null,
   menu: false,
   dialog: null,
@@ -2605,6 +3168,9 @@ const S = {
   history: [],
   saveState: 'saved',
   storageOk: true,
+  // A plan opened from a handover file: explored in memory, never written anywhere.
+  ephemeral: false,
+  noteOpen: new Set(),
 };
 
 let renderFn = () => {};
@@ -2618,9 +3184,11 @@ function refreshChrome() { chromeFn(); }
 // Mutations & undo
 // ---------------------------------------------------------------------------------------------
 
-function commit(mutate, { undoLabel = null, silent = false } = {}) {
+function commit(mutate, { undoLabel = null, silent = false, touch = true } = {}) {
   const before = JSON.stringify(S.profile);
   mutate(S.profile);
+  // When the plan last changed: a handover file older than this is out of date.
+  if (touch) S.profile.updatedAt = new Date().toISOString();
   S.history.push(before);
   if (S.history.length > 60) S.history.shift();
   S.version++;
@@ -2633,7 +3201,10 @@ function commit(mutate, { undoLabel = null, silent = false } = {}) {
 function undo() {
   const prev = S.history.pop();
   if (!prev) return false;
+  // Which handover file was last made is a fact about the world, not an edit: undo keeps it.
+  const made = S.profile?.handover;
   S.profile = JSON.parse(prev);
+  if (made?.savedAt) S.profile.handover = { note: '', contacts: '', ...(S.profile.handover || {}), savedAt: made.savedAt, savedHash: made.savedHash };
   S.version++;
   cache.clear();
   schedulePersist();
@@ -2647,6 +3218,14 @@ function replaceProfile(p, { keepHistory = true } = {}) {
   S.profile = p;
   S.version++;
   S.open.clear();
+  cache.clear();
+  schedulePersist();
+}
+
+// Record the handover file just made. Not an edit, so it stays out of the undo history.
+function stampHandover(fields) {
+  S.profile.handover = { note: '', contacts: '', ...(S.profile.handover || {}), ...fields };
+  S.version++;
   cache.clear();
   schedulePersist();
 }
@@ -2665,6 +3244,7 @@ function toast(text, { undo = false, ms = undo ? 9000 : 5000 } = {}) {
 
 let persistTimer = null;
 function schedulePersist() {
+  if (S.ephemeral) return;
   S.saveState = 'saving';
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistNow, 350);
@@ -2675,7 +3255,7 @@ function schedulePersist() {
 // storage area, so an unencrypted setup is only stored there after the person agrees to it.
 async function persistNow() {
   clearTimeout(persistTimer);
-  if (!S.profile) return false;
+  if (!S.profile || S.ephemeral) return false;
   if (!S.keyring && needsPlainConsent()) {
     S.saveState = 'unsaved';
     refreshChrome();
@@ -2756,6 +3336,14 @@ function normalize(input) {
     things: [],
     accounts: [],
   };
+  const iso = v => (typeof v === 'string' && v.length <= 40 && Number.isFinite(Date.parse(v)) ? v : undefined);
+  if (iso(p.reviewedAt)) out.reviewedAt = p.reviewedAt;
+  if (iso(p.updatedAt)) out.updatedAt = p.updatedAt;
+  if (p.handover && typeof p.handover === 'object') {
+    out.handover = { note: str(p.handover.note, 4000), contacts: str(p.handover.contacts, 2000) };
+    if (iso(p.handover.savedAt)) out.handover.savedAt = p.handover.savedAt;
+    if (typeof p.handover.savedHash === 'string' && /^[0-9a-f]{16}$/.test(p.handover.savedHash)) out.handover.savedHash = p.handover.savedHash;
+  }
   if (p.sample) out.sample = true;
   const seen = new Set();
   for (const t of Array.isArray(p.things) ? p.things.slice(0, 500) : []) {
@@ -2782,7 +3370,8 @@ function normalize(input) {
       ways: [],
     };
     if (Number.isFinite(a.count) && a.count > 1) x.count = Math.min(100000, Math.round(a.count));
-    if (a.note) x.note = str(a.note, 500);
+    if (a.note) x.note = str(a.note, 2000);
+    if (has(WISHES, a.wish)) x.wish = a.wish;
     const wseen = new Set();
     for (const w of Array.isArray(a.ways) ? a.ways.slice(0, 40) : []) {
       if (!w || typeof w !== 'object') continue;
@@ -2800,6 +3389,8 @@ function normalize(input) {
         note: str(w.note, 300),
         enabled: w.enabled !== false,
         ...(w.custom === true ? { custom: true } : {}),
+        // Data-only (hands over data, not a login): from the template, so older files get it too.
+        ...(w.dataOnly === true || (idOk(w.key) && TEMPLATE_BY_ID.get(x.template)?.ways.some(t => t.key === w.key && t.dataOnly)) ? { dataOnly: true } : {}),
         ...(Array.isArray(w.unlessWay) ? { unlessWay: w.unlessWay.filter(idOk).slice(0, 10) } : {}),
         ...(Array.isArray(w.unlessVia) ? { unlessVia: w.unlessVia.filter(v => has(VIA, v)).slice(0, 10) } : {}),
         steps: (Array.isArray(w.steps) ? w.steps.slice(0, 8) : []).map(s => ({
@@ -2877,6 +3468,8 @@ const presets = () => memo('presets', () => scenarioPresets(S.profile));
 const scenarioResult = (id, ctx) => memo('run:' + id + ':' + JSON.stringify(ctx), () => runScenario(S.profile, ctx, graph()));
 const analysis = () => memo('analysis', () => analyze(S.profile));
 // Verified fixes re-simulate the whole setup per candidate: compute once per change, not per render.
+// The owner's guide is dated today; a plan opened from a handover file keeps the file's date.
+const guide = () => memo('guide', () => buildGuide(S.profile, new Date(), S.ephemeral ? {} : { preparedAt: new Date().toISOString() }));
 const fixesFor = (accountId, ctx, limit = 4) => memo(`fix:${accountId}:${limit}:${JSON.stringify(ctx)}`, () => verifiedFixes(S.profile, accountId, ctx, limit));
 
 function customCtx() {
@@ -2891,7 +3484,7 @@ function currentScenario() {
   return list.find(s => s.id === S.scenario) || list.find(s => s.id === 'phone') || list[0];
 }
 
-return { STORE_KEY, PREF_KEY, S, onRender, rerender, refreshChrome, commit, undo, replaceProfile, toast, schedulePersist, persistNow, onFileUrl, needsPlainConsent, readStored, clearStored, readPrefs, writePrefs, unwrap, normalize, removeItem, usages, clearCache, memo, graph, presets, scenarioResult, analysis, fixesFor, customCtx, currentScenario };
+return { STORE_KEY, PREF_KEY, S, onRender, rerender, refreshChrome, commit, undo, replaceProfile, stampHandover, toast, schedulePersist, persistNow, onFileUrl, needsPlainConsent, readStored, clearStored, readPrefs, writePrefs, unwrap, normalize, removeItem, usages, clearCache, memo, graph, presets, scenarioResult, analysis, guide, fixesFor, customCtx, currentScenario };
 })();
 
 const __m_quickstart = (() => {
@@ -3121,6 +3714,8 @@ function resultHead(cur, res) {
     h('h1', { tabindex: '-1' }, cur.title),
     h('p', { class: 'blurb' }, cur.blurb),
     h('p', { class: 'verdict' }, verdict),
+    heir && total && !S.ephemeral ? h('p', { class: 'note' }, `The Handover tab turns this drill into a step-by-step guide for ${who}. `,
+      h('button', { class: 'btn small', onclick: () => { S.view = 'handover'; rerender(); window.scrollTo({ top: 0 }); } }, 'See the guide')) : null,
     total ? h('div', { class: 'bar', role: 'img', 'aria-label': `${t[0]} locked out, ${t[1]} appeal only, ${t[2]} days, ${t[3]} fine` },
       [0, 1, 2, 3].map(s => t[s] ? h('span', { class: 'b' + s, style: `width:${(100 * t[s]) / total}%` }) : null)) : null,
     total ? h('div', { class: 'legend' }, [0, 1, 2, 3].map(s => h('span', null, h('i', { class: 'b' + s, style: `background:var(--${['locked', 'appeal', 'slow', 'ok'][s]})` }), STATE_LABEL[s]))) : null,
@@ -3252,7 +3847,7 @@ function detail(cur, res, r, openEditor) {
   return h('div', { class: 'detail' }, blocks);
 }
 
-const phrase = (via, label) => (VIA[via]?.phrase || '{x}').replace('{x}', label);
+const phrase = (via, label) => (VIA[via]?.phrase || '{x}').replace('{x}', () => label);
 
 function route(g, d) {
   if (!d) return h('p', { class: 'note' }, 'No way in.');
@@ -3283,6 +3878,7 @@ const DISABLED = {
   abroad: "Not possible from abroad",
   'only-you': 'Only you can do this',
   'only-heir': 'Only after your death',
+  'data-only': 'Hands over the data, not a way to sign in',
 };
 
 function waysView(g, sim, b, depth, path) {
@@ -3325,7 +3921,7 @@ function optionView(g, sim, o, depth, key) {
   return h('span', { class: 'opt' }, d);
 }
 
-return { drillView };
+return { drillView, tallyText };
 })();
 
 const __m_setup = (() => {
@@ -3333,7 +3929,7 @@ const __m_setup = (() => {
 
 const { h, icon, stateChip, plural, readFile } = __m_ui;
 const { S, commit, rerender, removeItem, usages, graph, scenarioResult, toast } = __m_store;
-const { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, accountFromTemplate, accepts, templateForDomain } = __m_templates;
+const { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, WISHES, LEGACY_BY_TEMPLATE, accountFromTemplate, accepts, templateForDomain } = __m_templates;
 const { sitesFromExport } = __m_csv;
 const { uid } = __m_advice;
 
@@ -3460,7 +4056,7 @@ function thingRow(t) {
   return h('div', { class: 'thing' },
     h('span', { class: 'k' }, icon(t.kind)),
     h('input', { class: 'name', type: 'text', value: t.name, 'aria-label': THING_KINDS[t.kind].label + ' name', dataset: { k: k + ':name' }, onchange: e => patchThing(t.id, { name: e.target.value.trim() || THING_KINDS[t.kind].label }) }),
-    h('button', { class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove ' + t.name, onclick: del }, icon('trash')),
+    h('button', { class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove ' + t.name, onclick: del, dataset: { k: k + ':del' } }, icon('trash')),
     h('div', { class: 'attrs' }, attrs(t, k)),
   );
 }
@@ -3469,6 +4065,10 @@ function attrs(t, k) {
   const out = [];
   const where = () => h('label', { class: 'f' }, 'Kept',
     select(k + ':at', t.at || 'carried', [['carried', 'With me every day'], ...placeOptions().map(([v, n]) => [v, 'At ' + n])], v => patchThing(t.id, { at: v }), 'Where it is kept'));
+  // A short note for the handover guide (which drawer, where the key to the safe is).
+  const noteField = () => (t.note || S.noteOpen.has(t.id))
+    ? h('label', { class: 'f tnote' }, 'Note', h('input', { type: 'text', value: t.note || '', maxlength: '500', placeholder: `For ${trusted()}: which drawer, where the key is… never codes`, dataset: { k: k + ':note' }, onchange: e => { S.noteOpen.delete(t.id); patchThing(t.id, { note: e.target.value.trim().slice(0, 500) }); } }))
+    : h('button', { class: 'btn small ghost addnote', onclick: () => { S.noteOpen.add(t.id); S.focusAfter = k + ':note'; rerender(); }, dataset: { k: k + ':addnote' } }, icon('plus'), 'Note');
   const heirToggle = () => (!t.at || t.at === 'carried')
     ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: t.heirCan !== false, dataset: { k: k + ':heir' }, onchange: e => patchThing(t.id, { heirCan: e.target.checked ? '' : false }) }), `${trusted()} would get it back`)
     : null;
@@ -3483,10 +4083,12 @@ function attrs(t, k) {
           } else patchThing(t.id, { unlock: v });
         }, 'Unlocked with')));
       out.push(heirToggle());
+      out.push(noteField());
       break;
     case 'seckey': case 'paper': case 'photoid':
       out.push(where());
       out.push(heirToggle());
+      out.push(noteField());
       break;
     case 'number':
       out.push(h('label', { class: 'f' }, 'SIM in',
@@ -3513,6 +4115,7 @@ function attrs(t, k) {
       if (!t.inside) out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!t.home, dataset: { k: k + ':home' }, onchange: e => patchThing(t.id, { home: e.target.checked }) }), 'Home'));
       if (t.inside) out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!t.fireproof, dataset: { k: k + ':fp' }, onchange: e => patchThing(t.id, { fireproof: e.target.checked }) }), 'Fireproof'));
       out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: t.heirCan !== false, dataset: { k: k + ':heir' }, onchange: e => patchThing(t.id, { heirCan: e.target.checked ? '' : false }) }), `${trusted()} can get in`));
+      out.push(noteField());
       break;
     }
     case 'person':
@@ -3643,6 +4246,15 @@ function accountDialog(id, close) {
         h('div', { style: 'display:grid;gap:8px' }, a.ways.map((w, wi) => wayEditor(a, w, wi, edit))),
         h('button', { class: 'btn small', style: 'margin-top:10px', onclick: addWay }, icon('plus'), 'Add another way in'),
       ),
+      h('div', { class: 'ho-acct' },
+        h('h3', { style: 'font-size:15px;margin-bottom:4px' }, 'If something happens to you'),
+        h('p', { class: 'note', style: 'margin-bottom:10px' }, `Goes into the handover guide for ${trusted()}.`),
+        h('label', { class: 'field' }, 'What should happen to it',
+          select('a:wish', a.wish || '', [['', 'Not decided'], ...Object.entries(WISHES)], v => edit(acc => { if (v) acc.wish = v; else delete acc.wish; }), 'What should happen to it')),
+        h('label', { class: 'field', style: 'margin-top:10px' }, `Notes for ${trusted()}`,
+          h('textarea', { rows: '3', maxlength: '2000', value: a.note || '', placeholder: "What's in it, what to save, who to tell. Never passwords or codes.", dataset: { k: 'a:note' }, onchange: e => edit(acc => { const v = e.target.value.trim().slice(0, 2000); if (v) acc.note = v; else delete acc.note; }) })),
+        a.template && Object.hasOwn(LEGACY_BY_TEMPLATE, a.template) ? h('p', { class: 'note', style: 'margin-top:8px' }, h('b', null, 'Official route for families: '), LEGACY_BY_TEMPLATE[a.template]) : null,
+      ),
     ),
     h('div', { class: 'dlg-f' },
       h('button', { class: 'btn danger', onclick: () => { const name = a.name; close(); commit(p => removeItem(p, id), { undoLabel: `Deleted ${name}` }); } }, icon('trash'), 'Delete account'),
@@ -3691,7 +4303,7 @@ const NEW_FOR = {
 };
 
 function stepEditor(a, w, wi, s, si, edit, k) {
-  const phrase = (via, id) => (VIA[via]?.phrase || '{x}').replace('{x}', nameOf(id));
+  const phrase = (via, id) => (VIA[via]?.phrase || '{x}').replace('{x}', () => nameOf(id));
   const candidates = [...things(), ...S.profile.accounts.filter(x => x.id !== a.id)];
   const groups = s.types.map(type => ({ type, items: candidates.filter(c => accepts(type, c) && !s.anyOf.some(o => o.ref === c.id && o.via === type)) }));
   const onPick = (v) => {
@@ -3823,45 +4435,40 @@ return { setupView, autofill, addAccountFromTemplate, templatesDialog, accountDi
 })();
 
 const __m_weak = (() => {
-// Weak spots: whole-setup analysis. Which accounts fall to the fewest losses, which single
-// things take the most with them, which loops exist, and what to fix first.
+// Weak spots: whole-setup analysis shown on the Plan page. Which accounts fall to the fewest
+// losses, which single things take the most with them, which loops exist, and what to fix first.
 
 const { h, icon, stateChip, plural, listText } = __m_ui;
 const { S, commit, analysis, memo, fixesFor } = __m_store;
 const { LOCKED, APPEAL, SLOW, OK } = __m_engine;
 const { bestFixes } = __m_advice;
 
-function weakView(openEditor, goDrill, printPlan) {
+// Summary numbers for the Plan page.
+function weakSummary() {
   const an = analysis();
   const p = S.profile;
   const label = id => an.graph.nodes.get(id)?.label ?? id;
-  const accounts = p.accounts;
-  if (!accounts.length) return h('div', { class: 'weak' }, h('p', { class: 'empty' }, 'Add accounts in Setup to see your weak spots.'));
-
-  const fragile = accounts
+  const fragile = p.accounts
     .map(a => ({ a, n: an.resilience.get(a.id), sets: an.sets.get(a.id) || [] }))
     .sort((x, y) => x.n - y.n || (y.a.important - x.a.important) || x.a.name.localeCompare(y.a.name));
   const ones = fragile.filter(f => f.n === 1);
   const broken = fragile.filter(f => f.n === 0);
-
   // Every fragile account paired with each of its smallest lockout sets.
   const minSize = Math.min(...fragile.filter(f => f.n > 0 && f.sets.length).map(f => f.n), Infinity);
   const pairs = fragile.filter(f => f.n > 0 && f.n === minSize && f.n <= 2).flatMap(f => f.sets.filter(s => s.length === f.n).slice(0, 3).map(s => ({ accountId: f.a.id, lost: s })));
   const top = memo('weak:top', () => (pairs.length ? bestFixes(p, pairs, 3) : []));
+  const headline = !p.accounts.length ? 'Add accounts to see your weak spots.'
+    : broken.length ? `${plural(broken.length, 'account')} ${broken.length === 1 ? "doesn't" : "don't"} work even today.`
+      : ones.length ? `${plural(ones.length, 'account')} can be lost to a single thing going wrong.`
+        : `No single loss locks you out. Losing ${an.maxSize >= 3 ? 'two or three' : 'two'} things at once is what to watch.`;
+  return { an, label, fragile, ones, broken, top, minSize, headline };
+}
 
-  const headline = broken.length
-    ? `${plural(broken.length, 'account')} ${broken.length === 1 ? "doesn't" : "don't"} work even today.`
-    : ones.length
-      ? `${plural(ones.length, 'account')} can be lost to a single thing going wrong.`
-      : `No single loss locks you out. Losing ${an.maxSize >= 3 ? 'two or three' : 'two'} things at once is what to watch.`;
-
-  return h('div', { class: 'weak' },
-    h('header', { class: 'result-head' },
-      h('h1', null, 'Weak spots'),
-      h('p', { class: 'verdict' }, headline),
-      h('p', { class: 'blurb' }, `We tried losing every thing on your list, alone and in combinations of up to ${an.maxSize} (${an.evaluated.toLocaleString()} drills).`),
-    ),
-
+// The whole-setup analysis, as sections for the Plan page.
+function weakSections(openEditor) {
+  const { an, label, fragile, top, minSize } = weakSummary();
+  if (!S.profile.accounts.length) return [];
+  return [
     top.length ? h('section', null,
       h('h2', null, 'Fix these first'),
       h('p', { class: 'sub' }, `Changes that protect the most accounts against their weakest ${minSize === 1 ? 'single loss' : 'pair of losses'}. Each one was checked by re-running the drills with the change in place.`),
@@ -3874,7 +4481,7 @@ function weakView(openEditor, goDrill, printPlan) {
 
     h('section', null,
       h('h2', null, 'How many losses each account survives'),
-      h('p', { class: 'sub' }, 'The number is the fewest things you could lose at once and be locked out (or left with only a support appeal).'),
+      h('p', { class: 'sub' }, `The fewest things you could lose at once and be locked out, or left with only a support appeal. We tried every thing on your list, alone and in combinations of up to ${an.maxSize} (${an.evaluated.toLocaleString()} drills).`),
       h('div', { class: 'card', style: 'padding:0' }, fragile.map(f => resilienceRow(f, label, openEditor, an))),
     ),
 
@@ -3900,7 +4507,7 @@ function weakView(openEditor, goDrill, printPlan) {
         ])),
         h('p', { class: 'note', style: 'margin-top:8px' }, c.triggers.length
           ? ['It bites if you lose ', h('b', null, c.triggers.map(t => listText(t.map(label))).join(', or ')), '.']
-          : "Nothing we tried breaks it: something outside the loop always gets you in."),
+          : 'Nothing we tried breaks it: something outside the loop always gets you in.'),
       ))),
     ) : null,
 
@@ -3908,15 +4515,7 @@ function weakView(openEditor, goDrill, printPlan) {
       h('h2', null, 'Also worth checking'),
       h('ul', { class: 'warn-list' }, an.warnings.map(w => h('li', null, h('span', { class: 'lvl ' + w.level }), h('span', null, w.text)))),
     ) : null,
-
-    h('section', null,
-      h('h2', null, 'Next'),
-      h('div', { class: 'fieldrow' },
-        h('button', { class: 'btn', onclick: goDrill }, 'Run the drills'),
-        h('button', { class: 'btn', onclick: printPlan }, icon('print'), 'Print a recovery plan'),
-      ),
-    ),
-  );
+  ];
 }
 
 function resilienceRow(f, label, openEditor, an) {
@@ -3949,7 +4548,402 @@ function resilienceRow(f, label, openEditor, an) {
   );
 }
 
-return { weakView };
+return { weakSummary, weakSections };
+})();
+
+const __m_plan = (() => {
+// The Plan: the home screen. Whether the handover is ready, how the setup holds up in each drill,
+// when it was last reviewed, and the weak spots worth fixing first.
+
+const { h, icon, plural } = __m_ui;
+const { S, commit, presets, scenarioResult, guide } = __m_store;
+const { readiness, ago } = __m_guide;
+const { weakSummary, weakSections } = __m_weak;
+const { tallyText } = __m_drill;
+
+const GO_LABEL = {
+  trusted: 'Add a name',
+  pm: 'See why',
+  reach: 'See why',
+  wishes: 'Add wishes',
+  letter: 'Write it',
+  reviewed: 'Mark reviewed',
+  file: 'Create file',
+};
+
+// The review date travels in the handover file (it tells the reader how current it is), so a
+// review also asks for a fresh file.
+function markReviewed() {
+  commit(p => { p.reviewedAt = new Date().toISOString(); }, { undoLabel: 'Marked as reviewed today' });
+}
+
+function planView({ openEditor, go, printPlan }) {
+  const p = S.profile;
+  const g = guide();
+  const items = readiness(p, g);
+  const done = items.filter(i => i.ok).length;
+  const title = p.owner ? `${p.owner}'s plan` : 'Your plan';
+  const meta = [
+    g.reviewedDays === null ? 'Never reviewed' : `Reviewed ${ago(g.reviewedDays)}`,
+    plural(p.accounts.reduce((n, a) => n + Math.max(1, a.count || 1), 0), 'account'),
+    plural(p.things.length, 'thing'),
+  ];
+
+  return h('div', { class: 'weak plan' },
+    h('header', { class: 'page-h' },
+      h('div', null,
+        h('p', { class: 'eyebrow' }, 'Account continuity plan'),
+        h('h1', null, title),
+        h('p', { class: 'meta' }, meta.join(' · '))),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn' + (g.stale && p.accounts.length ? ' primary' : ''), onclick: markReviewed, dataset: { k: 'plan:review' } }, icon('check'), 'Mark as reviewed'),
+        h('button', { class: 'btn', onclick: printPlan }, icon('print'), 'Print')),
+    ),
+
+    staleNote(p, g),
+
+    h('div', { class: 'plan-grid' },
+      h('section', { class: 'card', 'aria-labelledby': 'ready-h' },
+        h('div', { class: 'card-h' }, h('h2', { id: 'ready-h' }, 'Handover'), h('span', { class: 'note' }, `${done} of ${items.length} done`)),
+        h('p', { class: 'note', style: 'margin-bottom:8px' }, `What ${p.trusted || 'the person you trust'} would need if you die or can't manage your accounts.`),
+        h('ul', { class: 'ready' }, items.map(it => h('li', { class: it.ok ? 'ok' : 'todo' },
+          h('span', { class: 'tick', 'aria-label': it.ok ? 'Done' : 'To do' }, it.ok ? icon('check') : null),
+          h('span', { class: 'grow' }, it.text),
+          it.ok ? null : h('button', { class: 'btn small', onclick: () => (it.go === 'review' ? markReviewed() : go(it.go)), dataset: { k: 'ready:' + it.key } }, GO_LABEL[it.key] || 'Open'),
+        ))),
+        h('div', { style: 'margin-top:10px' }, h('button', { class: 'btn small ghost', onclick: () => go('handover') }, 'Open Handover', icon('chevron'))),
+      ),
+      h('section', { class: 'card', 'aria-labelledby': 'drills-h' },
+        h('div', { class: 'card-h' }, h('h2', { id: 'drills-h' }, 'Drills'), h('span', { class: 'note' }, 'If this happened today')),
+        p.accounts.length
+          ? h('div', { class: 'drill-list' }, presets().map(sc => {
+            const r = scenarioResult(sc.id, sc.ctx);
+            return h('button', { class: 'drow', onclick: () => go('drill:' + sc.id), dataset: { k: 'plan:scn:' + sc.id } },
+              h('span', { class: 'ico' }, icon(sc.icon)),
+              h('span', { class: 't' }, sc.title),
+              h('span', { class: 'm' }, tallyText(r.tally)),
+              icon('chevron', 'i chev'));
+          }))
+          : h('p', { class: 'empty' }, 'Add your accounts in Setup to run the drills.'),
+      ),
+    ),
+
+    p.accounts.length ? h('section', { class: 'weak-h' },
+      h('h2', null, 'Weak spots'),
+      h('p', { class: 'sub' }, weakSummary().headline)) : null,
+    weakSections(openEditor),
+  );
+}
+
+function staleNote(p, g) {
+  if (!p.accounts.length || !g.stale) return null;
+  const text = g.reviewedDays === null
+    ? "Once this plan matches your real setup, mark it as reviewed. We'll remind you to look again in six months."
+    : `Last reviewed ${ago(g.reviewedDays)}. Phones, numbers and passwords change: walk through Setup, fix what's different, then mark it as reviewed.`;
+  return h('div', { class: 'banner' + (g.reviewedDays !== null ? ' warn' : '') }, icon('clock'), h('span', { class: 'grow' }, text));
+}
+
+return { markReviewed, planView };
+})();
+
+const __m_handover = (() => {
+// Handover: what the person you trust gets if you die or can't manage your accounts. You write a
+// note and say what should happen to each account; the step-by-step guide is generated from the
+// "You're gone" drill, so every step is a route the engine found using only what they can reach.
+
+const { h, icon, stateChip, listText } = __m_ui;
+const { S, commit, guide } = __m_store;
+const { handoverFresh } = __m_guide;
+const { KDF_ITERATIONS } = __m_crypto;
+const { WISHES, LEGACY_BY_TEMPLATE } = __m_templates;
+
+const REACH = ["Can't reach", 'Support appeal', 'Takes days', 'Right away'];
+
+function fmtDate(iso) {
+  const d = new Date(iso || '');
+  return Number.isFinite(+d) ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+}
+
+
+// ------------------------------------------------------------------------------------------
+// The owner's Handover tab
+
+function handoverView({ openDialog, openEditor, printGuide }) {
+  const p = S.profile;
+  const g = guide();
+  const who = p.trusted || 'the person you trust';
+  const ho = p.handover || {};
+  const setHo = (k, v) => commit(q => { q.handover = { note: '', contacts: '', ...(q.handover || {}), [k]: v }; });
+  const saved = ho.savedAt;
+  const fresh = handoverFresh(p);
+
+  return h('div', { class: 'weak handover' },
+    h('header', { class: 'page-h' },
+      h('div', null,
+        h('p', { class: 'eyebrow' }, 'Handover'),
+        h('h1', null, 'If something happens to you'),
+        h('p', { class: 'lede' }, `What ${who} would need if you die or can't manage your accounts: a step-by-step guide built from your setup, what you want done with each account, and a note from you. It never holds passwords or codes, only where things are and how they connect.`)),
+    ),
+
+    h('div', { class: 'ho-grid' },
+      h('section', { class: 'card ho-letter', 'aria-label': 'Your note' },
+        h('label', { class: 'field' }, 'The person you trust',
+          h('input', { type: 'text', value: p.trusted || '', placeholder: 'Partner, sibling, executor…', maxlength: '60', dataset: { k: 'ho:trusted' }, onchange: e => commit(q => { q.trusted = e.target.value.trim().slice(0, 60); }) })),
+        h('label', { class: 'field' }, `A note for ${who}`,
+          h('textarea', { rows: '5', maxlength: '4000', value: ho.note || '', placeholder: 'Where to start, what matters most, what can wait. Never passwords.', dataset: { k: 'ho:note' }, onchange: e => setHo('note', e.target.value.trim().slice(0, 4000)) })),
+        h('label', { class: 'field' }, 'People to contact',
+          h('textarea', { rows: '3', maxlength: '2000', value: ho.contacts || '', placeholder: 'Executor, lawyer, accountant, employer…', dataset: { k: 'ho:contacts' }, onchange: e => setHo('contacts', e.target.value.trim().slice(0, 2000)) })),
+      ),
+      h('section', { class: 'card ho-share', 'aria-labelledby': 'share-h' },
+        h('h2', { id: 'share-h' }, 'Give it to them'),
+        h('p', { class: 'ho-status ' + (fresh ? 'ok' : saved ? 'warn' : '') }, icon(fresh ? 'check' : saved ? 'clock' : 'lock'),
+          !saved ? 'No handover file yet.'
+            : fresh ? `Your handover file from ${fmtDate(saved)} is up to date.`
+              : `Your plan changed after the handover file of ${fmtDate(saved)}. Make a new one and replace the old.`),
+        h('div', { class: 'ho-opt' },
+          h('div', null,
+            h('b', null, 'Encrypted handover file'),
+            h('p', { class: 'note' }, `One file ${who} opens by double-clicking, in any browser, even offline. Locked with a passphrase you give only to them.`)),
+          h('button', { class: 'btn primary', onclick: () => openDialog({ type: 'export' }), dataset: { k: 'ho:export' } }, icon('lock'), 'Create handover file…')),
+        h('div', { class: 'ho-opt' },
+          h('div', null,
+            h('b', null, 'Printed guide'),
+            h('p', { class: 'note' }, 'The same guide on paper. Store it like the things it points to, for example with your will.')),
+          h('button', { class: 'btn', onclick: printGuide }, icon('print'), 'Print the guide')),
+        h('p', { class: 'note' }, 'Signing in as someone else can break a service\'s terms, and in some places the law, even with permission. The guide lists each service\'s official route for families next to the steps.'),
+      ),
+    ),
+
+    wishesSection(p, g, who, openEditor),
+
+    h('section', null,
+      h('h2', null, `What ${who} will see`),
+      h('p', { class: 'sub' }, 'Generated from your setup and the drill "You\'re gone". It changes as you change things.'),
+      h('div', { class: 'paper' }, guideDoc(g)),
+    ),
+  );
+}
+
+function wishesSection(p, g, who, openEditor) {
+  const accts = [...p.accounts].sort((a, b) => (b.important - a.important) || a.name.localeCompare(b.name));
+  const edit = (id, fn) => commit(q => { const a = q.accounts.find(x => x.id === id); if (a) fn(a); });
+  return h('section', null,
+    h('h2', null, 'What should happen to each account'),
+    h('p', { class: 'sub' }, `Your wishes and notes appear in the guide next to each account. Whether ${who} can get in comes from the drill "You're gone".`),
+    accts.length ? h('div', { class: 'card wish-list', style: 'padding:0' }, accts.map(a => {
+      const st = g.states.get(a.id) ?? 0;
+      return h('div', { class: 'wish' },
+        h('div', { class: 'wn' },
+          h('button', { class: 'linkish', onclick: () => openEditor(a.id), title: 'Edit ways in' }, a.important ? icon('star', 'i star') : null, a.name),
+          a.count > 1 ? h('span', { class: 'note' }, ` · ${a.count} accounts`) : null),
+        stateChip(st, REACH[st]),
+        h('select', { 'aria-label': `What should happen to ${a.name}`, dataset: { k: 'wish:' + a.id }, onchange: e => edit(a.id, x => { if (e.target.value) x.wish = e.target.value; else delete x.wish; }) },
+          h('option', { value: '', selected: !a.wish }, 'Not decided'),
+          Object.entries(WISHES).map(([v, label]) => h('option', { value: v, selected: a.wish === v }, label))),
+        h('input', { type: 'text', class: 'wnote', value: a.note || '', maxlength: '2000', placeholder: 'Notes: what\'s in it, what to save. Never passwords.', 'aria-label': `Notes about ${a.name}`, dataset: { k: 'wnote:' + a.id }, onchange: e => edit(a.id, x => { const v = e.target.value.trim().slice(0, 2000); if (v) x.note = v; else delete x.note; }) }),
+      );
+    })) : h('p', { class: 'empty' }, 'Add your accounts in Setup first.'),
+  );
+}
+
+// ------------------------------------------------------------------------------------------
+// The guide itself: the owner's preview, the recipient's view and the printout.
+
+function guideDoc(g, { print = false } = {}) {
+  const owner = g.owner || 'the owner';
+  const Owner = g.owner || 'The owner';
+  const t = g.tally;
+  const datedText = [
+    g.preparedAt ? `prepared ${fmtDate(g.preparedAt)}` : null,
+    g.reviewedAt ? `last reviewed ${fmtDate(g.reviewedAt)}` : null,
+  ].filter(Boolean).join(', ');
+  const dated = datedText ? datedText[0].toUpperCase() + datedText.slice(1) : '';
+  const usesNumber = g.gather.some(x => x.kind === 'number');
+  const hasSlow = g.steps.some(s => s.state === 2 || s.state === 1);
+
+  const got = [];
+  if (t.now) got.push(`${t.now} right away`);
+  if (t.days) got.push(`${t.days} in days`);
+  if (t.appeal) got.push(`${t.appeal} only through a support appeal`);
+  const of = `${t.total} ${t.total === 1 ? 'account' : 'accounts'}`;
+  const summary = !t.total ? 'No accounts are listed yet.'
+    : !got.length ? `With what you can reach, none of the ${of} can be opened yet. The official routes for families below are the way.`
+      : `Of ${of}, you can get into ${listText(got)}.` + (t.none ? ` ${t.none} can't be reached with what you have.` : '');
+
+  return h('article', { class: 'guide' },
+    h('header', { class: 'g-head' },
+      h('p', { class: 'eyebrow' }, 'Account handover guide'),
+      h('h1', null, g.owner ? `${g.owner}'s accounts` : 'Accounts'),
+      g.trusted ? h('p', { class: 'g-for' }, `For ${g.trusted}`) : null,
+      dated ? h('p', { class: 'meta' }, dated + '.') : null,
+    ),
+    g.reviewedDays !== null && g.stale ? h('p', { class: 'g-warn' }, `${Owner} last checked this ${fmtDate(g.reviewedAt)}. Some details may have changed since.`) : null,
+
+    g.letter ? h('blockquote', { class: 'g-letter' }, h('p', null, g.letter), h('footer', null, '— ', owner)) : null,
+
+    h('section', null,
+      h('p', { class: 'g-lede' }, `This guide shows how to get into ${owner}'s accounts using only what you can get to, in an order that works, and what ${owner} wants done with each one. It contains no passwords or codes.`),
+      h('p', { class: 'g-sum' }, summary),
+    ),
+
+    g.steps.length || g.blocked.length ? h('section', null,
+      h('h2', null, 'Before you start'),
+      h('ul', { class: 'g-tips' },
+        h('li', null, 'Go in order. Earlier steps open later ones.'),
+        usesNumber ? h('li', null, 'Don\'t cancel the phone number or close the email accounts until the end. Other accounts send codes and reset links to them.') : null,
+        hasSlow ? h('li', null, 'Start the steps that take days early. The wait starts when you ask.') : null,
+        h('li', null, 'Signing in as someone else can break a service\'s terms, and in some places the law, even with permission. When unsure, use the service\'s official route for families, listed with each account, or ask the estate\'s lawyer.'),
+      ),
+    ) : null,
+
+    g.gather.length ? h('section', null,
+      h('h2', null, 'Gather these first'),
+      h('ul', { class: 'g-gather' }, g.gather.map(x => h('li', null,
+        h('span', { class: 'gk' }, icon(x.kind)),
+        h('div', null,
+          h('b', null, x.name),
+          h('div', { class: 'gw' }, sentence(x)),
+          x.note ? h('div', { class: 'gn' }, x.note) : null),
+        h('span', { class: 'gs' }, `step ${x.step}`),
+      ))),
+    ) : null,
+
+    g.steps.length ? h('section', null,
+      h('h2', null, 'Step by step'),
+      h('ol', { class: 'g-steps' }, g.steps.map(s => h('li', { class: 'g-step' },
+        h('span', { class: 'g-n', 'aria-hidden': 'true' }, String(s.n)),
+        h('div', { class: 'g-body' },
+          h('h3', null, s.name, s.count > 1 ? h('span', { class: 'note' }, ` · ${s.count} accounts`) : null, ' ', stateChip(s.state, REACH[s.state])),
+          s.way ? h('p', { class: 'g-how' }, h('b', null, s.way), s.picks.length ? ': ' : '', s.picks.map((pk, i) => [i ? ' + ' : '', pk.text, pk.step ? h('span', { class: 'g-ref' }, ` (step ${pk.step})`) : null])) : null,
+          s.opens.length ? h('p', { class: 'note' }, `Once you're in, this opens ${stepList(s.opens.map(o => o.step))}.`) : null,
+          s.dataOnly ? h('p', { class: 'note' }, 'This hands over the data or the money, not a way to sign in, so it can\'t be used to get into other accounts.') : null,
+          wishBlock(s, Owner),
+          s.legacy ? h('p', { class: 'g-legacy' }, h('b', null, 'Official route for families: '), s.legacy) : null,
+        ),
+      ))),
+    ) : null,
+
+    g.blocked.length ? h('section', null,
+      h('h2', null, 'Not reachable this way'),
+      h('p', { class: 'note', style: 'margin-bottom:8px' }, 'None of the ways in work with what you can get to. The official route for families is usually the way.'),
+      h('ul', { class: 'g-blocked' }, g.blocked.map(b => h('li', null,
+        h('h3', null, b.name, b.count > 1 ? h('span', { class: 'note' }, ` · ${b.count} accounts`) : null),
+        b.reasons.length ? h('p', { class: 'note' }, 'Missing: ', b.reasons.map(r => `${r.label} (${r.reason})`).join('; '), '.') : null,
+        wishBlock(b, Owner),
+        b.legacy ? h('p', { class: 'g-legacy' }, h('b', null, 'Official route for families: '), b.legacy) : null,
+      ))),
+    ) : null,
+
+    g.contacts ? h('section', null, h('h2', null, 'People to contact'), h('p', { class: 'g-pre' }, g.contacts)) : null,
+
+    g.map.length ? h('section', { class: 'g-appendix' },
+      h('h2', null, 'The full map'),
+      h('p', { class: 'note', style: 'margin-bottom:8px' }, `Every way into each account as ${owner} set it up, and where everything is. Useful if something above no longer works.`),
+      h('div', { class: 'g-map' }, g.map.map(a => {
+        const body = a.ways.length
+          ? h('ul', null, a.ways.map(w => h('li', null,
+            h('b', null, w.label), w.speed ? ` (${w.speed.toLowerCase()})` : '', w.who === 'me' ? ` · only ${owner}` : w.who === 'heir' ? ' · for family or the estate' : '',
+            w.steps.length ? h('ul', null, w.steps.map(st => h('li', null, `${st.label}: `, st.options.length ? st.options.join(' or ') : h('em', null, 'nothing chosen')))) : null)))
+          : h('p', { class: 'note' }, 'No ways in are set up.');
+        return h('details', { open: print },
+          h('summary', null, a.name, a.count > 1 ? ` · ${a.count} accounts` : '', ' ', stateChip(a.state, REACH[a.state])),
+          body);
+      })),
+      g.inventory.length ? h('details', { open: print, class: 'g-inv' },
+        h('summary', null, 'Where everything is'),
+        h('ul', null, g.inventory.map(x => h('li', null, h('b', null, x.name), ': ', sentence(x), x.note ? ' ' + x.note : '', !x.reach && x.where !== 'Not written down or shared' ? h('em', null, ' Probably out of your reach.') : null)))) : null,
+    ) : null,
+
+    h('footer', { class: 'g-foot' }, `Made with Lockout Drill from ${owner}'s setup. It lists where things are and how accounts connect; it contains no passwords or codes. Anyone holding this and the things it points to could get in, so keep it safe.`),
+  );
+}
+
+// "Home › Desk drawer (left side of the desk). Unlock it with the PIN."
+function sentence(x) {
+  let s = x.where + (x.placeNote ? ` (${x.placeNote.replace(/[.\s]+$/, '')})` : '');
+  if (s && !/[.!?]$/.test(s)) s += '.';
+  return x.how ? (s ? `${s} ${x.how}` : x.how) : s;
+}
+
+function wishBlock(s, owner) {
+  if (!s.wishLabel && !s.note) return null;
+  return h('div', { class: 'g-wish' },
+    s.wishLabel ? h('p', null, h('b', null, `${owner}'s wish: `), s.wishLabel + '.') : null,
+    s.note ? h('p', { class: 'g-pre' }, s.note) : null);
+}
+
+function stepList(ns) {
+  const words = ns.map(n => `step ${n}`);
+  if (words.length === 1) return words[0];
+  return 'steps ' + ns.slice(0, -1).join(', ') + ' and ' + ns[ns.length - 1];
+}
+
+// ------------------------------------------------------------------------------------------
+// The recipient's view of a handover file
+
+function guidePage(g, { onPrint, onExplore, onClose }) {
+  return h('div', null,
+    h('header', { class: 'top' },
+      h('div', { class: 'brand' }, h('span', null, 'Handover guide')),
+      h('div', { class: 'spacer' }),
+      h('div', { class: 'status', title: 'This page runs offline and sends nothing anywhere.' }, icon('lock'), 'Opened on this device only'),
+      h('button', { class: 'btn small', onclick: onPrint }, icon('print'), 'Print'),
+      h('button', { class: 'btn small', onclick: onExplore, dataset: { k: 'g:explore' } }, 'Explore the drills'),
+      h('button', { class: 'btn small ghost', onclick: onClose }, 'Close'),
+    ),
+    h('main', { id: 'main' }, h('div', { class: 'paper solo' }, guideDoc(g))),
+  );
+}
+
+// ------------------------------------------------------------------------------------------
+// Creating the handover file
+
+function exportDialog(close, create) {
+  const who = S.profile.trusted || 'the person you trust';
+  let busy = false;
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const f = e.target;
+    const err = f.querySelector('.err');
+    const btn = f.querySelector('button[type=submit]');
+    const pass = f.pass.value;
+    if (pass.length < 10) { err.textContent = 'Use at least 10 characters. Four or five random words work well and are easy to read out.'; return; }
+    if (pass !== f.again.value) { err.textContent = "The two passphrases don't match."; return; }
+    busy = true;
+    btn.disabled = true; btn.textContent = 'Encrypting…';
+    try {
+      await create(pass);
+    } catch (x) {
+      err.textContent = x.message || String(x);
+      btn.disabled = false; btn.textContent = 'Create file';
+      busy = false;
+    }
+  };
+  const legacyCount = S.profile.accounts.filter(a => a.template && Object.hasOwn(LEGACY_BY_TEMPLATE, a.template)).length;
+  return h('form', { class: 'dlg', onsubmit: submit },
+    h('div', { class: 'dlg-h' }, h('h2', null, 'Create a handover file'),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close', onclick: close }, icon('x'))),
+    h('div', { class: 'dlg-b' },
+      h('p', null, `One HTML file with this app and your plan inside, encrypted (AES-256-GCM, PBKDF2 with ${KDF_ITERATIONS.toLocaleString()} rounds). ${who} double-clicks it, types the passphrase and gets the guide${legacyCount ? ', with the official route for families for each service we know' : ''}. It works offline in any modern browser.`),
+      h('ul', { class: 'ho-tips' },
+        h('li', null, h('b', null, 'Use a new passphrase, '), 'not the one that protects your setup here.'),
+        h('li', null, h('b', null, 'Keep the file and the passphrase apart. '), `Give ${who} the file (a USB stick, email or shared drive is fine: it's encrypted) and the passphrase another way: in person, in a sealed letter with your will, or through your lawyer.`),
+        h('li', null, h('b', null, 'Make a new file when things change. '), 'The Plan page tells you when this one is out of date.'),
+        h('li', null, 'A forgotten passphrase can\'t be recovered. If it\'s lost, make a new file.'),
+      ),
+      h('div', { class: 'fieldrow' },
+        h('label', { class: 'field grow' }, 'Handover passphrase', h('input', { type: 'password', name: 'pass', autocomplete: 'new-password', autofocus: true, dataset: { k: 'ex:1' } })),
+        h('label', { class: 'field grow' }, 'Again', h('input', { type: 'password', name: 'again', autocomplete: 'new-password', dataset: { k: 'ex:2' } }))),
+      h('p', { class: 'err', role: 'alert' }),
+    ),
+    h('div', { class: 'dlg-f' },
+      h('button', { class: 'btn', type: 'button', onclick: close }, 'Cancel'),
+      h('button', { class: 'btn primary', type: 'submit' }, 'Create file')),
+  );
+}
+
+return { fmtDate, handoverView, guideDoc, guidePage, exportDialog };
 })();
 
 const __m_app = (() => {
@@ -3959,24 +4953,65 @@ const { h, append, icon, logo, stateChip, plural, listText, captureFocus, restor
 const {
   S, onRender, rerender, refreshChrome, commit, undo, replaceProfile, toast, persistNow, schedulePersist,
   readStored, clearStored, unwrap, normalize, presets, scenarioResult, analysis, graph, readPrefs, writePrefs,
-  clearCache, onFileUrl, STORE_KEY,
+  clearCache, onFileUrl, guide, stampHandover, STORE_KEY,
 } = __m_store;
 const { derivation, OK, PHYSICAL_KINDS } = __m_engine;
 const { THING_KINDS } = __m_templates;
 const { makeKeyring, encryptWith, decryptEnvelope, decryptWith, isEncrypted, WrongPassphrase, KDF_ITERATIONS } = __m_crypto;
+const { buildGuide, makeHandoverHtml, readHandover, planFingerprint, HANDOVER_ID } = __m_guide;
 const { sampleProfile } = __m_sample;
 const { QS_DEFAULT, buildFromAnswers } = __m_quickstart;
 const { uid } = __m_advice;
 const { drillView } = __m_drill;
 const { setupView, accountDialog, templatesDialog, importDialog, autofill } = __m_setup;
-const { weakView } = __m_weak;
+const { planView } = __m_plan;
+const { handoverView, guideDoc, guidePage, exportDialog } = __m_handover;
 
 const $ = (sel) => document.querySelector(sel);
+
+// A handover file is this same app with an encrypted plan embedded. The page is rebuilt from its
+// own parts, so the file is an exact copy of the app whatever else has touched the live document.
+// The build fills in SHELL (index.html); unbundled, fall back to a cleaned copy of the document.
+const SHELL = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'\">\n<meta name=\"referrer\" content=\"no-referrer\">\n<meta name=\"description\" content=\"An account continuity plan: simulate losing your phone, your home or your memory, see which accounts you'd be locked out of and which fix works, and leave a step-by-step handover guide for someone you trust. Runs offline in one file.\">\n<title>Lockout Drill</title>\n<link rel=\"icon\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1' y='1' width='30' height='30' rx='8' fill='%231a1c20'/%3E%3Cpath d='M11 14v-3a5 5 0 0 1 9.4-2.4' fill='none' stroke='%23f4f2ec' stroke-width='2.4' stroke-linecap='round'/%3E%3Crect x='8.5' y='14' width='15' height='11' rx='2.2' fill='%23f4f2ec'/%3E%3C/svg%3E\">\n<style id=\"app-style\">/*__CSS__*/</style>\n</head>\n<body>\n<div id=\"app\"></div>\n<div id=\"toast\" aria-live=\"polite\"></div>\n<dialog id=\"dlg\"></dialog>\n<div id=\"print\" aria-hidden=\"true\"></div>\n<noscript><p style=\"max-width:40em;margin:4em auto;font:16px system-ui\">Lockout Drill needs JavaScript. It runs entirely inside this page and makes no network requests.</p></noscript>\n<script>/*__JS__*/<\/script>\n</body>\n</html>\n";
+const OWN_SCRIPT = document.currentScript?.textContent || '';
+const OWN_STYLE = document.getElementById('app-style')?.textContent || '';
+function pristineHtml() {
+  if (SHELL && OWN_SCRIPT) return SHELL.replace('/*__CSS__*/', () => OWN_STYLE).replace('/*__JS__*/', () => OWN_SCRIPT);
+  const doc = document.documentElement.cloneNode(true);
+  doc.querySelector('#' + HANDOVER_ID)?.remove();
+  for (const id of ['app', 'toast', 'dlg', 'print']) doc.querySelector('#' + id)?.replaceChildren();
+  return '<!doctype html>\n' + doc.outerHTML;
+}
+
+// Opened as a handover file? Its data tag sits before this script, so it is already parsed.
+const HANDOVER_EL = document.getElementById(HANDOVER_ID);
+const EMBEDDED = HANDOVER_EL ? (readHandover(HANDOVER_EL.textContent) || {}) : null;
+HANDOVER_EL?.remove();
+
+const VIEWS = ['plan', 'drill', 'handover', 'setup'];
 
 function openEditor(id) { S.dialog = { type: 'account', id }; rerender(); }
 function openDialog(d) { S.dialog = d; rerender(); }
 function closeDialog() { S.dialog = null; rerender(); }
-function setView(v) { S.view = v; S.menu = false; writePrefs({ view: v }); rerender(); window.scrollTo({ top: 0 }); }
+function setView(v) {
+  if (!VIEWS.includes(v)) v = 'plan';
+  S.view = v; S.menu = false;
+  if (!S.ephemeral) writePrefs({ view: v });
+  rerender(); window.scrollTo({ top: 0 });
+}
+
+// Where the Plan page's shortcuts lead.
+function go(target) {
+  if (target === 'export') { openDialog({ type: 'export' }); return; }
+  if (target === 'setup') { S.focusAfter = 'ho:trusted'; setView('handover'); return; }
+  if (target === 'heir' || target.startsWith('drill:')) {
+    S.scenario = target === 'heir' ? 'heir' : target.slice(6);
+    S.open.clear();
+    setView('drill');
+    return;
+  }
+  setView(target);
+}
 
 // ------------------------------------------------------------------------------------------
 // Render
@@ -3987,6 +5022,12 @@ let pointerDown = false;
 let renderPending = false;
 function requestRender() {
   if (pointerDown) { renderPending = true; return; }
+  // A text field commits on "change", which fires before Tab moves focus on. Render once focus
+  // has moved, so it can be restored to the next field instead of being lost with the old DOM.
+  if (window.event?.type === 'change') {
+    if (!renderPending) { renderPending = true; setTimeout(() => { if (renderPending && !pointerDown) render(); }, 0); }
+    return;
+  }
   render();
 }
 
@@ -4020,6 +5061,9 @@ function renderChrome() {
 }
 
 function statusEl() {
+  if (S.ephemeral) {
+    return h('div', { id: 'status', class: 'status', title: 'Opened from a handover file. Nothing is written to this browser.' }, icon('lock'), 'Read-only copy: nothing is saved');
+  }
   const warn = S.saveState === 'error' || S.saveState === 'unsaved';
   const text = S.saveState === 'error' ? 'Not saved: browser storage is blocked. Use Save to file.'
     : S.saveState === 'unsaved' ? 'Not saved yet'
@@ -4043,6 +5087,8 @@ function screen() {
   if (S.screen === 'welcome') return welcome();
   if (S.screen === 'quickstart') return quickstart();
   if (S.screen === 'lock') return lockScreen();
+  if (S.screen === 'guidelock') return guideLockScreen();
+  if (S.screen === 'guide' && S.guideProfile) return guideScreen();
   if (S.screen === 'app' && S.profile) return appShell();
   return h('div');
 }
@@ -4054,8 +5100,8 @@ function welcome() {
   return h('main', null,
     h('div', { class: 'welcome' },
       h('div', { class: 'brand' }, logo(), 'Lockout Drill'),
-      h('h1', null, 'What would you lose if your phone disappeared tonight?'),
-      h('p', { class: 'lede' }, 'Map how you get into the accounts that matter, then run drills: phone stolen, house fire, SIM hijacked, or you gone and someone else picking up the pieces. See exactly which accounts you would be locked out of, why, and the fix that actually works.'),
+      h('h1', null, "If you lost your phone tonight, or weren't around tomorrow, could anyone get into your accounts?"),
+      h('p', { class: 'lede' }, "Map how you get into the accounts that matter. Drills show what you'd lose if your phone, your home or your memory went, and which fix works. A handover guide tells the person you trust how to get in, in what order, and what you want done with each account."),
       h('div', { class: 'cta' },
         h('button', { class: 'btn primary', onclick: () => { S.screen = 'quickstart'; rerender(); }, dataset: { k: 'w:start' } }, 'Start with my setup'),
         h('button', { class: 'btn', onclick: loadSample }, icon('sample'), 'Explore a sample setup'),
@@ -4063,10 +5109,11 @@ function welcome() {
       ),
       h('div', { class: 'steps3' },
         h('div', null, h('b', null, '1. List what you have'), 'Phones, numbers, security keys, printed codes, where they are kept, and what you remember.'),
-        h('div', null, h('b', null, '2. Say how you get in'), 'For each important account: the sign-in and recovery options you really set up. Templates do most of it.'),
-        h('div', null, h('b', null, '3. Run the drills'), 'Every loss scenario, every combination, circular dependencies, and fixes checked by re-running the drill.'),
+        h('div', null, h('b', null, '2. Say how you get in'), 'The sign-in and recovery options you really set up. Templates for 29 services do most of it.'),
+        h('div', null, h('b', null, '3. Run the drills'), 'Phone stolen, house fire, SIM hijacked: what you would lose, why, and fixes checked by re-running the drill.'),
+        h('div', null, h('b', null, '4. Hand it over'), 'A step-by-step guide for the person you trust, as an encrypted file they double-click or on paper.'),
       ),
-      h('p', { class: 'privacy' }, icon('shield'), h('span', null, 'Runs entirely in this page. No account, no server, no network requests. Never enter passwords or codes here: only where things are and how they connect. You can protect your setup with a passphrase.')),
+      h('p', { class: 'privacy' }, icon('shield'), h('span', null, 'Runs entirely in this page. No account, no server, no network requests. Never enter passwords or codes here: only where things are and how they connect. You can protect your plan with a passphrase.')),
     ),
   );
 }
@@ -4074,7 +5121,7 @@ function welcome() {
 function loadSample() {
   replaceProfile(sampleProfile(), { keepHistory: !!S.profile });
   S.screen = 'app';
-  S.view = 'drill';
+  S.view = 'plan';
   S.scenario = 'phone';
   rerender();
 }
@@ -4128,9 +5175,9 @@ function finishQuickstart() {
   replaceProfile(p, { keepHistory: true });
   S.qs = null;
   S.screen = 'app';
-  S.view = 'drill';
+  S.view = 'plan';
   S.scenario = 'phone';
-  toast('Your starting setup is ready. Check it in Setup: we made a few guesses.', { ms: 8000 });
+  toast('Your starting plan is ready. We made a few guesses: check them in Setup.', { ms: 8000 });
   rerender();
 }
 
@@ -4184,6 +5231,104 @@ function lockScreen() {
 }
 
 // ------------------------------------------------------------------------------------------
+// Handover file: the person you trust opens it, enters the passphrase and gets the guide.
+// Nothing from it is ever written to this browser.
+
+function guideLockScreen() {
+  const env = S.handoverEnv;
+  let busy = false;
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy || !env) return;
+    busy = true;
+    const form = e.target;
+    const err = form.querySelector('.err');
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Opening…';
+    try {
+      const { profile } = await decryptEnvelope(env, form.pass.value);
+      if (S.screen !== 'guidelock') return;
+      S.guideProfile = normalize(profile);
+      S.guideCache = null;
+      S.screen = 'guide';
+      rerender();
+      window.scrollTo({ top: 0 });
+    } catch (x) {
+      if (S.screen !== 'guidelock') return;
+      err.textContent = x instanceof WrongPassphrase ? "That passphrase doesn't open this guide. Capitals and spaces count." : x.message;
+      btn.disabled = false; btn.textContent = 'Open the guide';
+      busy = false;
+      form.pass.select();
+    }
+  };
+  return h('main', null,
+    h('form', { class: 'lockscreen', onsubmit: submit },
+      h('div', { class: 'brand' }, logo(), 'Handover guide'),
+      h('h1', null, env ? 'A guide to their accounts was left for you' : 'This handover file is damaged'),
+      h('p', { class: 'note' }, env
+        ? 'It is encrypted. Enter the passphrase you were given with it. Everything stays on this device: this page works offline and sends nothing anywhere.'
+        : 'Its encrypted part could not be read. Ask for a new copy of the file.'),
+      env ? [
+        h('input', { type: 'password', name: 'pass', autocomplete: 'off', placeholder: 'Passphrase', 'aria-label': 'Passphrase', dataset: { k: 'glock:pass' }, autofocus: true }),
+        h('p', { class: 'err', role: 'alert' }),
+        h('button', { class: 'btn primary', type: 'submit' }, 'Open the guide'),
+      ] : null,
+      h('button', { class: 'btn ghost', type: 'button', onclick: openAppInstead }, 'Open Lockout Drill instead'),
+    ),
+  );
+}
+
+function guideScreen() {
+  if (!S.guideCache) S.guideCache = buildGuide(S.guideProfile);
+  return guidePage(S.guideCache, { onPrint: printGuide, onExplore: exploreHandover, onClose: closeGuide });
+}
+
+// Explore the drills on the handed-over plan, in memory only.
+function exploreHandover() {
+  S.profile = JSON.parse(JSON.stringify(S.guideProfile));
+  S.history = [];
+  S.version++;
+  clearCache();
+  S.saveState = 'saved';
+  S.screen = 'app';
+  S.view = 'drill';
+  S.scenario = 'heir';
+  S.open.clear();
+  rerender();
+  window.scrollTo({ top: 0 });
+}
+
+function backToGuide() {
+  S.profile = null;
+  S.history = [];
+  S.dialog = null;
+  S.menu = false;
+  clearCache();
+  S.screen = 'guide';
+  rerender();
+  window.scrollTo({ top: 0 });
+}
+
+function closeGuide() {
+  S.guideProfile = null;
+  S.guideCache = null;
+  S.profile = null;
+  S.history = [];
+  clearCache();
+  $('#print').replaceChildren();
+  S.screen = 'guidelock';
+  rerender();
+}
+
+function openAppInstead() {
+  S.ephemeral = false;
+  S.handoverEnv = null;
+  S.guideProfile = null;
+  S.guideCache = null;
+  startApp();
+}
+
+// ------------------------------------------------------------------------------------------
 // App shell
 
 function appShell() {
@@ -4191,20 +5336,24 @@ function appShell() {
   return h('div', null,
     h('header', { class: 'top' },
       h('div', { class: 'brand' }, logo(), h('span', null, 'Lockout Drill')),
-      h('nav', { class: 'tabs', role: 'tablist', 'aria-label': 'Views' }, tab('drill', 'Drills'), tab('setup', 'Setup'), tab('weak', 'Weak spots')),
+      h('nav', { class: 'tabs', role: 'tablist', 'aria-label': 'Views' }, tab('plan', 'Plan'), tab('drill', 'Drills'), tab('handover', 'Handover'), tab('setup', 'Setup')),
       h('div', { class: 'spacer' }),
       statusEl(),
       menu(),
     ),
     h('main', { id: 'main' },
       unsavedBanner(),
+      S.ephemeral ? h('div', { class: 'banner' }, icon('lock'),
+        h('span', { class: 'grow' }, `You're exploring ${S.profile.owner ? S.profile.owner + "'s" : 'this'} plan from a handover file. Nothing you change here is saved.`),
+        h('button', { class: 'btn small primary', onclick: backToGuide }, 'Back to the guide')) : null,
       S.profile.sample ? h('div', { class: 'banner' }, icon('sample'),
         h('span', { class: 'grow' }, `You're exploring a sample setup (${S.profile.owner}'s). Change anything; it's a sandbox.`),
         h('button', { class: 'btn small primary', onclick: () => { S.screen = 'quickstart'; rerender(); } }, 'Start my own')) : null,
       !S.profile.accounts.length ? h('div', { class: 'banner' }, h('span', { class: 'grow' }, 'Add your accounts in Setup, then come back to run the drills.'), h('button', { class: 'btn small', onclick: () => setView('setup') }, 'Go to Setup')) : null,
       S.view === 'setup' ? setupView(openEditor, openDialog)
-        : S.view === 'weak' ? weakView(openEditor, () => setView('drill'), printPlan)
-          : drillView(openEditor),
+        : S.view === 'drill' ? drillView(openEditor)
+          : S.view === 'handover' ? handoverView({ openDialog, openEditor, printGuide })
+            : planView({ openEditor, go, printPlan }),
     ),
   );
 }
@@ -4214,7 +5363,12 @@ function menu() {
   const toggle = () => { S.menu = !S.menu; rerender(); if (S.menu) setTimeout(() => $('.menu button')?.focus(), 0); };
   return h('div', { class: 'menu-wrap' },
     h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': String(S.menu), onclick: toggle, dataset: { k: 'menu' } }, icon('more')),
-    S.menu ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
+    S.menu && S.ephemeral ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
+      item('heir', 'Back to the guide', backToGuide),
+      item('print', 'Print the handover guide', printGuide),
+      item('print', 'Print a recovery plan', printPlan),
+      item('undo', 'Undo last change', () => { if (!undo()) toast('Nothing to undo'); }),
+    ) : S.menu ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
       item('save', 'Save to file…', saveFile),
       item('open', 'Open a saved file…', openFile),
       item('import', 'Import sites from a password manager…', () => openDialog({ type: 'import' })),
@@ -4223,6 +5377,8 @@ function menu() {
       S.keyring ? item('lock', 'Lock now', lockNow) : null,
       S.keyring ? item('shield', 'Remove passphrase', () => openDialog({ type: 'confirm', title: 'Remove the passphrase?', text: 'Your setup will be stored unencrypted in this browser. Anyone using this browser profile could read where your recovery codes are kept' + (onFileUrl() ? ', and so could any other HTML file you open from your disk.' : '.'), yes: 'Remove passphrase', onYes: () => { S.keyring = null; S.dialog = null; if (onFileUrl()) writePrefs({ plainOk: true }); persistNow(); toast('Passphrase removed'); rerender(); } })) : null,
       h('hr'),
+      item('heir', 'Create a handover file…', () => openDialog({ type: 'export' })),
+      item('print', 'Print the handover guide', printGuide),
       item('print', 'Print a recovery plan', printPlan),
       item('plus', 'Start a new setup…', () => S.profile.sample || !S.profile.accounts.length
         ? (S.screen = 'quickstart', rerender())
@@ -4273,11 +5429,15 @@ async function lockNow() {
 // ------------------------------------------------------------------------------------------
 // Files
 
+function localDate(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 async function saveFile() {
+  // A plan opened from a handover file stays inside that encrypted file.
+  if (S.ephemeral) { toast('This is a read-only copy from a handover file, so it cannot be saved separately.'); return; }
   const payload = S.keyring ? await encryptWith(S.keyring, S.profile) : { app: 'lockout-drill', encrypted: false, v: 1, savedAt: new Date().toISOString(), profile: S.profile };
-  const d = new Date();
-  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  download(`lockout-drill-${date}${S.keyring ? '.encrypted' : ''}.json`, JSON.stringify(payload, null, S.keyring ? 0 : 1));
+  download(`lockout-drill-${localDate()}${S.keyring ? '.encrypted' : ''}.json`, JSON.stringify(payload, null, S.keyring ? 0 : 1));
   toast(S.keyring ? 'Saved an encrypted copy to your downloads.' : 'Saved to your downloads. It is not encrypted: keep it somewhere private, or set a passphrase first.', { ms: 7000 });
 }
 
@@ -4301,6 +5461,23 @@ function openFile() {
   });
   document.body.append(input);
   input.click();
+}
+
+// The handover file: this app plus the plan, encrypted under a passphrase of its own.
+async function createHandover(pass) {
+  const keyring = await makeKeyring(pass);
+  const now = new Date().toISOString();
+  const savedHash = planFingerprint(S.profile);
+  const copy = JSON.parse(JSON.stringify(S.profile));
+  delete copy.sample;
+  copy.handover = { note: '', contacts: '', ...(copy.handover || {}), savedAt: now, savedHash };
+  const html = makeHandoverHtml(pristineHtml(), await encryptWith(keyring, copy));
+  // A neutral name: the file may travel by email or a shared drive, and nothing readable should say whose it is.
+  download(`handover-guide-${localDate()}.html`, html, 'text/html');
+  S.dialog = null;
+  stampHandover({ savedAt: now, savedHash });
+  toast(`Handover file saved to your downloads. Give ${S.profile.trusted || 'them'} the passphrase separately.`, { ms: 9000 });
+  rerender();
 }
 
 // Opening a file never replaces a passphrase you already use here: the opened setup is
@@ -4345,6 +5522,7 @@ function dialogContent() {
   if (d.type === 'templates') return templatesDialog(closeDialog, openEditor, openDialog);
   if (d.type === 'import') return importDialog(closeDialog);
   if (d.type === 'passphrase') return passphraseDialog(d);
+  if (d.type === 'export') return S.profile ? exportDialog(closeDialog, createHandover) : null;
   if (d.type === 'confirm') return h('div', { class: 'dlg' },
     h('div', { class: 'dlg-h' }, h('h2', null, d.title)),
     h('div', { class: 'dlg-b' }, h('p', null, d.text)),
@@ -4407,9 +5585,31 @@ function passphraseDialog(d) {
 // ------------------------------------------------------------------------------------------
 // Printable recovery plan
 
-function printPlan() {
-  buildPlan();
+// What gets printed: the recovery plan (for you) or the handover guide (for the person you trust).
+// Ctrl+P prints whichever fits the screen you're on.
+let printKind = null;
+function printNow(kind) {
+  printKind = kind;
+  buildPrint(kind);
   window.print();
+}
+function printPlan() { printNow('plan'); }
+function printGuide() { printNow('guide'); }
+
+function contextPrintKind() {
+  if (S.screen === 'guide') return 'guide';
+  if (S.screen !== 'app' || !S.profile) return null;
+  return S.view === 'handover' ? 'guide' : 'plan';
+}
+
+function buildPrint(kind) {
+  if (kind === 'guide') {
+    // The recipient always prints the guide as handed over, even after exploring and editing a copy.
+    const g = (S.screen === 'guide' || S.ephemeral) && S.guideProfile ? (S.guideCache || (S.guideCache = buildGuide(S.guideProfile))) : S.profile ? guide() : null;
+    $('#print').replaceChildren();
+    if (g) $('#print').append(guideDoc(g, { print: true }));
+  } else if (kind === 'plan') buildPlan();
+  else $('#print').replaceChildren();
 }
 
 function buildPlan() {
@@ -4447,7 +5647,7 @@ function buildPlan() {
     h('table', null, h('thead', null, h('tr', null, h('th', null, 'Scenario'), h('th', null, 'Locked out'), h('th', null, 'Appeal only'), h('th', null, 'Takes days'))), h('tbody', null, rows)),
     routes.length ? [h('h2', null, 'If your phone is stolen: fastest way back into each important account'), h('ul', null, routes)] : null,
     fragile.length ? [h('h2', null, 'Accounts one loss away from lockout'), h('ul', null, fragile.map(a => h('li', null, a.name, ': ', (an.sets.get(a.id) || []).filter(s => s.length === 1).map(s => label(s[0])).join(', or '))))] : null,
-    p.trusted ? [h('h2', null, `For ${p.trusted}`), h('p', null, 'If something happens to me, start with the accounts and places above. The drill "You\'re gone" in Lockout Drill shows what you can reach and how.')] : null,
+    p.trusted ? [h('h2', null, `For ${p.trusted}`), h('p', null, 'If something happens to me, the handover guide (the Handover tab in Lockout Drill) has the steps in order. Start with the places above.')] : null,
   ]);
 }
 
@@ -4466,9 +5666,8 @@ document.addEventListener('keydown', (e) => {
   // Plain Ctrl/Cmd+Z only: Shift+Z is "redo" elsewhere and must not undo a second change.
   if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z' && !typing(e) && !S.dialog) { e.preventDefault(); undo(); return; }
   if (typing(e) || mod || e.altKey || S.dialog) return;
-  if (e.key === '1') setView('drill');
-  else if (e.key === '2') setView('setup');
-  else if (e.key === '3') setView('weak');
+  const i = ['1', '2', '3', '4'].indexOf(e.key);
+  if (i >= 0) setView(VIEWS[i]);
 });
 
 document.addEventListener('click', (e) => {
@@ -4480,6 +5679,7 @@ document.addEventListener('click', (e) => {
 
 // Another tab saved, changed the passphrase, or erased: follow it instead of overwriting it.
 async function onStorage(e) {
+  if (S.ephemeral) return;
   if (e.key !== STORE_KEY && e.key !== null) return;
   let data = null;
   try { data = e.newValue ? JSON.parse(e.newValue) : null; } catch { return; }
@@ -4530,8 +5730,22 @@ function boot() {
   const dlg = $('#dlg');
   dlg.addEventListener('close', () => { if (S.dialog) { S.dialog = null; rerender(); } });
   dlg.addEventListener('click', (e) => { if (e.target === dlg) closeDialog(); });
+  window.addEventListener('beforeprint', () => { buildPrint(printKind || contextPrintKind()); });
+  window.addEventListener('afterprint', () => { printKind = null; });
+  if (EMBEDDED) {
+    // A handover file: never read or write this browser's saved setup.
+    S.ephemeral = true;
+    S.handoverEnv = isEncrypted(EMBEDDED) ? EMBEDDED : null;
+    S.screen = 'guidelock';
+    render();
+    return;
+  }
+  startApp();
+}
+
+function startApp() {
   const prefs = readPrefs();
-  if (prefs.view) S.view = prefs.view;
+  S.view = VIEWS.includes(prefs.view) ? prefs.view : 'plan';
   const stored = readStored();
   if (!stored) {
     S.screen = 'welcome';
@@ -4546,8 +5760,6 @@ function boot() {
     }
   }
   render();
-  // Ctrl+P prints the recovery plan too, not a blank page.
-  window.addEventListener('beforeprint', () => { if (S.screen === 'app') buildPlan(); else $('#print').replaceChildren(); });
 }
 
 return { boot };

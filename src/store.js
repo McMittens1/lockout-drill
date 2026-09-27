@@ -2,9 +2,10 @@
 // computations.
 
 import { compile, runScenario, scenarioPresets, analyze } from './engine.js';
-import { THING_KINDS, ACCOUNT_CATEGORIES, SPEEDS, WAY_KINDS, VIA } from './templates.js';
+import { THING_KINDS, ACCOUNT_CATEGORIES, SPEEDS, WAY_KINDS, VIA, WISHES, TEMPLATE_BY_ID } from './templates.js';
 import { encryptWith, isEncrypted } from './crypto.js';
 import { verifiedFixes } from './advice.js';
+import { buildGuide } from './guide.js';
 
 export const STORE_KEY = 'lockout-drill:v1';
 export const PREF_KEY = 'lockout-drill:prefs';
@@ -12,13 +13,13 @@ export const PREF_KEY = 'lockout-drill:prefs';
 export const S = {
   profile: null,
   version: 0,
-  view: 'drill',
+  view: 'plan',
   scenario: 'phone',
   custom: { lost: [], abroad: false, heir: false },
   open: new Set(),
   openDetails: new Set(),
   keyring: null,
-  screen: 'boot', // boot | welcome | quickstart | lock | app
+  screen: 'boot', // boot | welcome | quickstart | lock | app | guidelock | guide
   pendingEnvelope: null,
   menu: false,
   dialog: null,
@@ -26,6 +27,9 @@ export const S = {
   history: [],
   saveState: 'saved',
   storageOk: true,
+  // A plan opened from a handover file: explored in memory, never written anywhere.
+  ephemeral: false,
+  noteOpen: new Set(),
 };
 
 let renderFn = () => {};
@@ -39,9 +43,11 @@ export function refreshChrome() { chromeFn(); }
 // Mutations & undo
 // ---------------------------------------------------------------------------------------------
 
-export function commit(mutate, { undoLabel = null, silent = false } = {}) {
+export function commit(mutate, { undoLabel = null, silent = false, touch = true } = {}) {
   const before = JSON.stringify(S.profile);
   mutate(S.profile);
+  // When the plan last changed: a handover file older than this is out of date.
+  if (touch) S.profile.updatedAt = new Date().toISOString();
   S.history.push(before);
   if (S.history.length > 60) S.history.shift();
   S.version++;
@@ -54,7 +60,10 @@ export function commit(mutate, { undoLabel = null, silent = false } = {}) {
 export function undo() {
   const prev = S.history.pop();
   if (!prev) return false;
+  // Which handover file was last made is a fact about the world, not an edit: undo keeps it.
+  const made = S.profile?.handover;
   S.profile = JSON.parse(prev);
+  if (made?.savedAt) S.profile.handover = { note: '', contacts: '', ...(S.profile.handover || {}), savedAt: made.savedAt, savedHash: made.savedHash };
   S.version++;
   cache.clear();
   schedulePersist();
@@ -68,6 +77,14 @@ export function replaceProfile(p, { keepHistory = true } = {}) {
   S.profile = p;
   S.version++;
   S.open.clear();
+  cache.clear();
+  schedulePersist();
+}
+
+// Record the handover file just made. Not an edit, so it stays out of the undo history.
+export function stampHandover(fields) {
+  S.profile.handover = { note: '', contacts: '', ...(S.profile.handover || {}), ...fields };
+  S.version++;
   cache.clear();
   schedulePersist();
 }
@@ -86,6 +103,7 @@ export function toast(text, { undo = false, ms = undo ? 9000 : 5000 } = {}) {
 
 let persistTimer = null;
 export function schedulePersist() {
+  if (S.ephemeral) return;
   S.saveState = 'saving';
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistNow, 350);
@@ -96,7 +114,7 @@ export function schedulePersist() {
 // storage area, so an unencrypted setup is only stored there after the person agrees to it.
 export async function persistNow() {
   clearTimeout(persistTimer);
-  if (!S.profile) return false;
+  if (!S.profile || S.ephemeral) return false;
   if (!S.keyring && needsPlainConsent()) {
     S.saveState = 'unsaved';
     refreshChrome();
@@ -177,6 +195,14 @@ export function normalize(input) {
     things: [],
     accounts: [],
   };
+  const iso = v => (typeof v === 'string' && v.length <= 40 && Number.isFinite(Date.parse(v)) ? v : undefined);
+  if (iso(p.reviewedAt)) out.reviewedAt = p.reviewedAt;
+  if (iso(p.updatedAt)) out.updatedAt = p.updatedAt;
+  if (p.handover && typeof p.handover === 'object') {
+    out.handover = { note: str(p.handover.note, 4000), contacts: str(p.handover.contacts, 2000) };
+    if (iso(p.handover.savedAt)) out.handover.savedAt = p.handover.savedAt;
+    if (typeof p.handover.savedHash === 'string' && /^[0-9a-f]{16}$/.test(p.handover.savedHash)) out.handover.savedHash = p.handover.savedHash;
+  }
   if (p.sample) out.sample = true;
   const seen = new Set();
   for (const t of Array.isArray(p.things) ? p.things.slice(0, 500) : []) {
@@ -203,7 +229,8 @@ export function normalize(input) {
       ways: [],
     };
     if (Number.isFinite(a.count) && a.count > 1) x.count = Math.min(100000, Math.round(a.count));
-    if (a.note) x.note = str(a.note, 500);
+    if (a.note) x.note = str(a.note, 2000);
+    if (has(WISHES, a.wish)) x.wish = a.wish;
     const wseen = new Set();
     for (const w of Array.isArray(a.ways) ? a.ways.slice(0, 40) : []) {
       if (!w || typeof w !== 'object') continue;
@@ -221,6 +248,8 @@ export function normalize(input) {
         note: str(w.note, 300),
         enabled: w.enabled !== false,
         ...(w.custom === true ? { custom: true } : {}),
+        // Data-only (hands over data, not a login): from the template, so older files get it too.
+        ...(w.dataOnly === true || (idOk(w.key) && TEMPLATE_BY_ID.get(x.template)?.ways.some(t => t.key === w.key && t.dataOnly)) ? { dataOnly: true } : {}),
         ...(Array.isArray(w.unlessWay) ? { unlessWay: w.unlessWay.filter(idOk).slice(0, 10) } : {}),
         ...(Array.isArray(w.unlessVia) ? { unlessVia: w.unlessVia.filter(v => has(VIA, v)).slice(0, 10) } : {}),
         steps: (Array.isArray(w.steps) ? w.steps.slice(0, 8) : []).map(s => ({
@@ -298,6 +327,8 @@ export const presets = () => memo('presets', () => scenarioPresets(S.profile));
 export const scenarioResult = (id, ctx) => memo('run:' + id + ':' + JSON.stringify(ctx), () => runScenario(S.profile, ctx, graph()));
 export const analysis = () => memo('analysis', () => analyze(S.profile));
 // Verified fixes re-simulate the whole setup per candidate: compute once per change, not per render.
+// The owner's guide is dated today; a plan opened from a handover file keeps the file's date.
+export const guide = () => memo('guide', () => buildGuide(S.profile, new Date(), S.ephemeral ? {} : { preparedAt: new Date().toISOString() }));
 export const fixesFor = (accountId, ctx, limit = 4) => memo(`fix:${accountId}:${limit}:${JSON.stringify(ctx)}`, () => verifiedFixes(S.profile, accountId, ctx, limit));
 
 export function customCtx() {

@@ -4,24 +4,65 @@ import { h, append, icon, logo, stateChip, plural, listText, captureFocus, resto
 import {
   S, onRender, rerender, refreshChrome, commit, undo, replaceProfile, toast, persistNow, schedulePersist,
   readStored, clearStored, unwrap, normalize, presets, scenarioResult, analysis, graph, readPrefs, writePrefs,
-  clearCache, onFileUrl, STORE_KEY,
+  clearCache, onFileUrl, guide, stampHandover, STORE_KEY,
 } from './store.js';
 import { derivation, OK, PHYSICAL_KINDS } from './engine.js';
 import { THING_KINDS } from './templates.js';
 import { makeKeyring, encryptWith, decryptEnvelope, decryptWith, isEncrypted, WrongPassphrase, KDF_ITERATIONS } from './crypto.js';
+import { buildGuide, makeHandoverHtml, readHandover, planFingerprint, HANDOVER_ID } from './guide.js';
 import { sampleProfile } from './sample.js';
 import { QS_DEFAULT, buildFromAnswers } from './quickstart.js';
 import { uid } from './advice.js';
 import { drillView } from './drill.js';
 import { setupView, accountDialog, templatesDialog, importDialog, autofill } from './setup.js';
-import { weakView } from './weak.js';
+import { planView } from './plan.js';
+import { handoverView, guideDoc, guidePage, exportDialog } from './handover.js';
 
 const $ = (sel) => document.querySelector(sel);
+
+// A handover file is this same app with an encrypted plan embedded. The page is rebuilt from its
+// own parts, so the file is an exact copy of the app whatever else has touched the live document.
+// The build fills in SHELL (index.html); unbundled, fall back to a cleaned copy of the document.
+const SHELL = /*__SHELL__*/null;
+const OWN_SCRIPT = document.currentScript?.textContent || '';
+const OWN_STYLE = document.getElementById('app-style')?.textContent || '';
+function pristineHtml() {
+  if (SHELL && OWN_SCRIPT) return SHELL.replace('/*__CSS__*/', () => OWN_STYLE).replace('/*__JS__*/', () => OWN_SCRIPT);
+  const doc = document.documentElement.cloneNode(true);
+  doc.querySelector('#' + HANDOVER_ID)?.remove();
+  for (const id of ['app', 'toast', 'dlg', 'print']) doc.querySelector('#' + id)?.replaceChildren();
+  return '<!doctype html>\n' + doc.outerHTML;
+}
+
+// Opened as a handover file? Its data tag sits before this script, so it is already parsed.
+const HANDOVER_EL = document.getElementById(HANDOVER_ID);
+const EMBEDDED = HANDOVER_EL ? (readHandover(HANDOVER_EL.textContent) || {}) : null;
+HANDOVER_EL?.remove();
+
+const VIEWS = ['plan', 'drill', 'handover', 'setup'];
 
 function openEditor(id) { S.dialog = { type: 'account', id }; rerender(); }
 function openDialog(d) { S.dialog = d; rerender(); }
 function closeDialog() { S.dialog = null; rerender(); }
-function setView(v) { S.view = v; S.menu = false; writePrefs({ view: v }); rerender(); window.scrollTo({ top: 0 }); }
+function setView(v) {
+  if (!VIEWS.includes(v)) v = 'plan';
+  S.view = v; S.menu = false;
+  if (!S.ephemeral) writePrefs({ view: v });
+  rerender(); window.scrollTo({ top: 0 });
+}
+
+// Where the Plan page's shortcuts lead.
+function go(target) {
+  if (target === 'export') { openDialog({ type: 'export' }); return; }
+  if (target === 'setup') { S.focusAfter = 'ho:trusted'; setView('handover'); return; }
+  if (target === 'heir' || target.startsWith('drill:')) {
+    S.scenario = target === 'heir' ? 'heir' : target.slice(6);
+    S.open.clear();
+    setView('drill');
+    return;
+  }
+  setView(target);
+}
 
 // ------------------------------------------------------------------------------------------
 // Render
@@ -32,6 +73,12 @@ let pointerDown = false;
 let renderPending = false;
 function requestRender() {
   if (pointerDown) { renderPending = true; return; }
+  // A text field commits on "change", which fires before Tab moves focus on. Render once focus
+  // has moved, so it can be restored to the next field instead of being lost with the old DOM.
+  if (window.event?.type === 'change') {
+    if (!renderPending) { renderPending = true; setTimeout(() => { if (renderPending && !pointerDown) render(); }, 0); }
+    return;
+  }
   render();
 }
 
@@ -65,6 +112,9 @@ function renderChrome() {
 }
 
 function statusEl() {
+  if (S.ephemeral) {
+    return h('div', { id: 'status', class: 'status', title: 'Opened from a handover file. Nothing is written to this browser.' }, icon('lock'), 'Read-only copy: nothing is saved');
+  }
   const warn = S.saveState === 'error' || S.saveState === 'unsaved';
   const text = S.saveState === 'error' ? 'Not saved: browser storage is blocked. Use Save to file.'
     : S.saveState === 'unsaved' ? 'Not saved yet'
@@ -88,6 +138,8 @@ function screen() {
   if (S.screen === 'welcome') return welcome();
   if (S.screen === 'quickstart') return quickstart();
   if (S.screen === 'lock') return lockScreen();
+  if (S.screen === 'guidelock') return guideLockScreen();
+  if (S.screen === 'guide' && S.guideProfile) return guideScreen();
   if (S.screen === 'app' && S.profile) return appShell();
   return h('div');
 }
@@ -99,8 +151,8 @@ function welcome() {
   return h('main', null,
     h('div', { class: 'welcome' },
       h('div', { class: 'brand' }, logo(), 'Lockout Drill'),
-      h('h1', null, 'What would you lose if your phone disappeared tonight?'),
-      h('p', { class: 'lede' }, 'Map how you get into the accounts that matter, then run drills: phone stolen, house fire, SIM hijacked, or you gone and someone else picking up the pieces. See exactly which accounts you would be locked out of, why, and the fix that actually works.'),
+      h('h1', null, "If you lost your phone tonight, or weren't around tomorrow, could anyone get into your accounts?"),
+      h('p', { class: 'lede' }, "Map how you get into the accounts that matter. Drills show what you'd lose if your phone, your home or your memory went, and which fix works. A handover guide tells the person you trust how to get in, in what order, and what you want done with each account."),
       h('div', { class: 'cta' },
         h('button', { class: 'btn primary', onclick: () => { S.screen = 'quickstart'; rerender(); }, dataset: { k: 'w:start' } }, 'Start with my setup'),
         h('button', { class: 'btn', onclick: loadSample }, icon('sample'), 'Explore a sample setup'),
@@ -108,10 +160,11 @@ function welcome() {
       ),
       h('div', { class: 'steps3' },
         h('div', null, h('b', null, '1. List what you have'), 'Phones, numbers, security keys, printed codes, where they are kept, and what you remember.'),
-        h('div', null, h('b', null, '2. Say how you get in'), 'For each important account: the sign-in and recovery options you really set up. Templates do most of it.'),
-        h('div', null, h('b', null, '3. Run the drills'), 'Every loss scenario, every combination, circular dependencies, and fixes checked by re-running the drill.'),
+        h('div', null, h('b', null, '2. Say how you get in'), 'The sign-in and recovery options you really set up. Templates for 29 services do most of it.'),
+        h('div', null, h('b', null, '3. Run the drills'), 'Phone stolen, house fire, SIM hijacked: what you would lose, why, and fixes checked by re-running the drill.'),
+        h('div', null, h('b', null, '4. Hand it over'), 'A step-by-step guide for the person you trust, as an encrypted file they double-click or on paper.'),
       ),
-      h('p', { class: 'privacy' }, icon('shield'), h('span', null, 'Runs entirely in this page. No account, no server, no network requests. Never enter passwords or codes here: only where things are and how they connect. You can protect your setup with a passphrase.')),
+      h('p', { class: 'privacy' }, icon('shield'), h('span', null, 'Runs entirely in this page. No account, no server, no network requests. Never enter passwords or codes here: only where things are and how they connect. You can protect your plan with a passphrase.')),
     ),
   );
 }
@@ -119,7 +172,7 @@ function welcome() {
 function loadSample() {
   replaceProfile(sampleProfile(), { keepHistory: !!S.profile });
   S.screen = 'app';
-  S.view = 'drill';
+  S.view = 'plan';
   S.scenario = 'phone';
   rerender();
 }
@@ -173,9 +226,9 @@ function finishQuickstart() {
   replaceProfile(p, { keepHistory: true });
   S.qs = null;
   S.screen = 'app';
-  S.view = 'drill';
+  S.view = 'plan';
   S.scenario = 'phone';
-  toast('Your starting setup is ready. Check it in Setup: we made a few guesses.', { ms: 8000 });
+  toast('Your starting plan is ready. We made a few guesses: check them in Setup.', { ms: 8000 });
   rerender();
 }
 
@@ -229,6 +282,104 @@ function lockScreen() {
 }
 
 // ------------------------------------------------------------------------------------------
+// Handover file: the person you trust opens it, enters the passphrase and gets the guide.
+// Nothing from it is ever written to this browser.
+
+function guideLockScreen() {
+  const env = S.handoverEnv;
+  let busy = false;
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy || !env) return;
+    busy = true;
+    const form = e.target;
+    const err = form.querySelector('.err');
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Opening…';
+    try {
+      const { profile } = await decryptEnvelope(env, form.pass.value);
+      if (S.screen !== 'guidelock') return;
+      S.guideProfile = normalize(profile);
+      S.guideCache = null;
+      S.screen = 'guide';
+      rerender();
+      window.scrollTo({ top: 0 });
+    } catch (x) {
+      if (S.screen !== 'guidelock') return;
+      err.textContent = x instanceof WrongPassphrase ? "That passphrase doesn't open this guide. Capitals and spaces count." : x.message;
+      btn.disabled = false; btn.textContent = 'Open the guide';
+      busy = false;
+      form.pass.select();
+    }
+  };
+  return h('main', null,
+    h('form', { class: 'lockscreen', onsubmit: submit },
+      h('div', { class: 'brand' }, logo(), 'Handover guide'),
+      h('h1', null, env ? 'A guide to their accounts was left for you' : 'This handover file is damaged'),
+      h('p', { class: 'note' }, env
+        ? 'It is encrypted. Enter the passphrase you were given with it. Everything stays on this device: this page works offline and sends nothing anywhere.'
+        : 'Its encrypted part could not be read. Ask for a new copy of the file.'),
+      env ? [
+        h('input', { type: 'password', name: 'pass', autocomplete: 'off', placeholder: 'Passphrase', 'aria-label': 'Passphrase', dataset: { k: 'glock:pass' }, autofocus: true }),
+        h('p', { class: 'err', role: 'alert' }),
+        h('button', { class: 'btn primary', type: 'submit' }, 'Open the guide'),
+      ] : null,
+      h('button', { class: 'btn ghost', type: 'button', onclick: openAppInstead }, 'Open Lockout Drill instead'),
+    ),
+  );
+}
+
+function guideScreen() {
+  if (!S.guideCache) S.guideCache = buildGuide(S.guideProfile);
+  return guidePage(S.guideCache, { onPrint: printGuide, onExplore: exploreHandover, onClose: closeGuide });
+}
+
+// Explore the drills on the handed-over plan, in memory only.
+function exploreHandover() {
+  S.profile = JSON.parse(JSON.stringify(S.guideProfile));
+  S.history = [];
+  S.version++;
+  clearCache();
+  S.saveState = 'saved';
+  S.screen = 'app';
+  S.view = 'drill';
+  S.scenario = 'heir';
+  S.open.clear();
+  rerender();
+  window.scrollTo({ top: 0 });
+}
+
+function backToGuide() {
+  S.profile = null;
+  S.history = [];
+  S.dialog = null;
+  S.menu = false;
+  clearCache();
+  S.screen = 'guide';
+  rerender();
+  window.scrollTo({ top: 0 });
+}
+
+function closeGuide() {
+  S.guideProfile = null;
+  S.guideCache = null;
+  S.profile = null;
+  S.history = [];
+  clearCache();
+  $('#print').replaceChildren();
+  S.screen = 'guidelock';
+  rerender();
+}
+
+function openAppInstead() {
+  S.ephemeral = false;
+  S.handoverEnv = null;
+  S.guideProfile = null;
+  S.guideCache = null;
+  startApp();
+}
+
+// ------------------------------------------------------------------------------------------
 // App shell
 
 function appShell() {
@@ -236,20 +387,24 @@ function appShell() {
   return h('div', null,
     h('header', { class: 'top' },
       h('div', { class: 'brand' }, logo(), h('span', null, 'Lockout Drill')),
-      h('nav', { class: 'tabs', role: 'tablist', 'aria-label': 'Views' }, tab('drill', 'Drills'), tab('setup', 'Setup'), tab('weak', 'Weak spots')),
+      h('nav', { class: 'tabs', role: 'tablist', 'aria-label': 'Views' }, tab('plan', 'Plan'), tab('drill', 'Drills'), tab('handover', 'Handover'), tab('setup', 'Setup')),
       h('div', { class: 'spacer' }),
       statusEl(),
       menu(),
     ),
     h('main', { id: 'main' },
       unsavedBanner(),
+      S.ephemeral ? h('div', { class: 'banner' }, icon('lock'),
+        h('span', { class: 'grow' }, `You're exploring ${S.profile.owner ? S.profile.owner + "'s" : 'this'} plan from a handover file. Nothing you change here is saved.`),
+        h('button', { class: 'btn small primary', onclick: backToGuide }, 'Back to the guide')) : null,
       S.profile.sample ? h('div', { class: 'banner' }, icon('sample'),
         h('span', { class: 'grow' }, `You're exploring a sample setup (${S.profile.owner}'s). Change anything; it's a sandbox.`),
         h('button', { class: 'btn small primary', onclick: () => { S.screen = 'quickstart'; rerender(); } }, 'Start my own')) : null,
       !S.profile.accounts.length ? h('div', { class: 'banner' }, h('span', { class: 'grow' }, 'Add your accounts in Setup, then come back to run the drills.'), h('button', { class: 'btn small', onclick: () => setView('setup') }, 'Go to Setup')) : null,
       S.view === 'setup' ? setupView(openEditor, openDialog)
-        : S.view === 'weak' ? weakView(openEditor, () => setView('drill'), printPlan)
-          : drillView(openEditor),
+        : S.view === 'drill' ? drillView(openEditor)
+          : S.view === 'handover' ? handoverView({ openDialog, openEditor, printGuide })
+            : planView({ openEditor, go, printPlan }),
     ),
   );
 }
@@ -259,7 +414,12 @@ function menu() {
   const toggle = () => { S.menu = !S.menu; rerender(); if (S.menu) setTimeout(() => $('.menu button')?.focus(), 0); };
   return h('div', { class: 'menu-wrap' },
     h('button', { class: 'icon-btn', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': String(S.menu), onclick: toggle, dataset: { k: 'menu' } }, icon('more')),
-    S.menu ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
+    S.menu && S.ephemeral ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
+      item('heir', 'Back to the guide', backToGuide),
+      item('print', 'Print the handover guide', printGuide),
+      item('print', 'Print a recovery plan', printPlan),
+      item('undo', 'Undo last change', () => { if (!undo()) toast('Nothing to undo'); }),
+    ) : S.menu ? h('div', { class: 'menu', role: 'menu', onkeydown: e => { if (e.key === 'Escape') { S.menu = false; rerender(); $('[data-k="menu"]')?.focus(); } } },
       item('save', 'Save to file…', saveFile),
       item('open', 'Open a saved file…', openFile),
       item('import', 'Import sites from a password manager…', () => openDialog({ type: 'import' })),
@@ -268,6 +428,8 @@ function menu() {
       S.keyring ? item('lock', 'Lock now', lockNow) : null,
       S.keyring ? item('shield', 'Remove passphrase', () => openDialog({ type: 'confirm', title: 'Remove the passphrase?', text: 'Your setup will be stored unencrypted in this browser. Anyone using this browser profile could read where your recovery codes are kept' + (onFileUrl() ? ', and so could any other HTML file you open from your disk.' : '.'), yes: 'Remove passphrase', onYes: () => { S.keyring = null; S.dialog = null; if (onFileUrl()) writePrefs({ plainOk: true }); persistNow(); toast('Passphrase removed'); rerender(); } })) : null,
       h('hr'),
+      item('heir', 'Create a handover file…', () => openDialog({ type: 'export' })),
+      item('print', 'Print the handover guide', printGuide),
       item('print', 'Print a recovery plan', printPlan),
       item('plus', 'Start a new setup…', () => S.profile.sample || !S.profile.accounts.length
         ? (S.screen = 'quickstart', rerender())
@@ -318,11 +480,15 @@ async function lockNow() {
 // ------------------------------------------------------------------------------------------
 // Files
 
+function localDate(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 async function saveFile() {
+  // A plan opened from a handover file stays inside that encrypted file.
+  if (S.ephemeral) { toast('This is a read-only copy from a handover file, so it cannot be saved separately.'); return; }
   const payload = S.keyring ? await encryptWith(S.keyring, S.profile) : { app: 'lockout-drill', encrypted: false, v: 1, savedAt: new Date().toISOString(), profile: S.profile };
-  const d = new Date();
-  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  download(`lockout-drill-${date}${S.keyring ? '.encrypted' : ''}.json`, JSON.stringify(payload, null, S.keyring ? 0 : 1));
+  download(`lockout-drill-${localDate()}${S.keyring ? '.encrypted' : ''}.json`, JSON.stringify(payload, null, S.keyring ? 0 : 1));
   toast(S.keyring ? 'Saved an encrypted copy to your downloads.' : 'Saved to your downloads. It is not encrypted: keep it somewhere private, or set a passphrase first.', { ms: 7000 });
 }
 
@@ -346,6 +512,23 @@ function openFile() {
   });
   document.body.append(input);
   input.click();
+}
+
+// The handover file: this app plus the plan, encrypted under a passphrase of its own.
+async function createHandover(pass) {
+  const keyring = await makeKeyring(pass);
+  const now = new Date().toISOString();
+  const savedHash = planFingerprint(S.profile);
+  const copy = JSON.parse(JSON.stringify(S.profile));
+  delete copy.sample;
+  copy.handover = { note: '', contacts: '', ...(copy.handover || {}), savedAt: now, savedHash };
+  const html = makeHandoverHtml(pristineHtml(), await encryptWith(keyring, copy));
+  // A neutral name: the file may travel by email or a shared drive, and nothing readable should say whose it is.
+  download(`handover-guide-${localDate()}.html`, html, 'text/html');
+  S.dialog = null;
+  stampHandover({ savedAt: now, savedHash });
+  toast(`Handover file saved to your downloads. Give ${S.profile.trusted || 'them'} the passphrase separately.`, { ms: 9000 });
+  rerender();
 }
 
 // Opening a file never replaces a passphrase you already use here: the opened setup is
@@ -390,6 +573,7 @@ function dialogContent() {
   if (d.type === 'templates') return templatesDialog(closeDialog, openEditor, openDialog);
   if (d.type === 'import') return importDialog(closeDialog);
   if (d.type === 'passphrase') return passphraseDialog(d);
+  if (d.type === 'export') return S.profile ? exportDialog(closeDialog, createHandover) : null;
   if (d.type === 'confirm') return h('div', { class: 'dlg' },
     h('div', { class: 'dlg-h' }, h('h2', null, d.title)),
     h('div', { class: 'dlg-b' }, h('p', null, d.text)),
@@ -452,9 +636,31 @@ function passphraseDialog(d) {
 // ------------------------------------------------------------------------------------------
 // Printable recovery plan
 
-function printPlan() {
-  buildPlan();
+// What gets printed: the recovery plan (for you) or the handover guide (for the person you trust).
+// Ctrl+P prints whichever fits the screen you're on.
+let printKind = null;
+function printNow(kind) {
+  printKind = kind;
+  buildPrint(kind);
   window.print();
+}
+function printPlan() { printNow('plan'); }
+function printGuide() { printNow('guide'); }
+
+function contextPrintKind() {
+  if (S.screen === 'guide') return 'guide';
+  if (S.screen !== 'app' || !S.profile) return null;
+  return S.view === 'handover' ? 'guide' : 'plan';
+}
+
+function buildPrint(kind) {
+  if (kind === 'guide') {
+    // The recipient always prints the guide as handed over, even after exploring and editing a copy.
+    const g = (S.screen === 'guide' || S.ephemeral) && S.guideProfile ? (S.guideCache || (S.guideCache = buildGuide(S.guideProfile))) : S.profile ? guide() : null;
+    $('#print').replaceChildren();
+    if (g) $('#print').append(guideDoc(g, { print: true }));
+  } else if (kind === 'plan') buildPlan();
+  else $('#print').replaceChildren();
 }
 
 function buildPlan() {
@@ -492,7 +698,7 @@ function buildPlan() {
     h('table', null, h('thead', null, h('tr', null, h('th', null, 'Scenario'), h('th', null, 'Locked out'), h('th', null, 'Appeal only'), h('th', null, 'Takes days'))), h('tbody', null, rows)),
     routes.length ? [h('h2', null, 'If your phone is stolen: fastest way back into each important account'), h('ul', null, routes)] : null,
     fragile.length ? [h('h2', null, 'Accounts one loss away from lockout'), h('ul', null, fragile.map(a => h('li', null, a.name, ': ', (an.sets.get(a.id) || []).filter(s => s.length === 1).map(s => label(s[0])).join(', or '))))] : null,
-    p.trusted ? [h('h2', null, `For ${p.trusted}`), h('p', null, 'If something happens to me, start with the accounts and places above. The drill "You\'re gone" in Lockout Drill shows what you can reach and how.')] : null,
+    p.trusted ? [h('h2', null, `For ${p.trusted}`), h('p', null, 'If something happens to me, the handover guide (the Handover tab in Lockout Drill) has the steps in order. Start with the places above.')] : null,
   ]);
 }
 
@@ -511,9 +717,8 @@ document.addEventListener('keydown', (e) => {
   // Plain Ctrl/Cmd+Z only: Shift+Z is "redo" elsewhere and must not undo a second change.
   if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z' && !typing(e) && !S.dialog) { e.preventDefault(); undo(); return; }
   if (typing(e) || mod || e.altKey || S.dialog) return;
-  if (e.key === '1') setView('drill');
-  else if (e.key === '2') setView('setup');
-  else if (e.key === '3') setView('weak');
+  const i = ['1', '2', '3', '4'].indexOf(e.key);
+  if (i >= 0) setView(VIEWS[i]);
 });
 
 document.addEventListener('click', (e) => {
@@ -525,6 +730,7 @@ document.addEventListener('click', (e) => {
 
 // Another tab saved, changed the passphrase, or erased: follow it instead of overwriting it.
 async function onStorage(e) {
+  if (S.ephemeral) return;
   if (e.key !== STORE_KEY && e.key !== null) return;
   let data = null;
   try { data = e.newValue ? JSON.parse(e.newValue) : null; } catch { return; }
@@ -575,8 +781,22 @@ export function boot() {
   const dlg = $('#dlg');
   dlg.addEventListener('close', () => { if (S.dialog) { S.dialog = null; rerender(); } });
   dlg.addEventListener('click', (e) => { if (e.target === dlg) closeDialog(); });
+  window.addEventListener('beforeprint', () => { buildPrint(printKind || contextPrintKind()); });
+  window.addEventListener('afterprint', () => { printKind = null; });
+  if (EMBEDDED) {
+    // A handover file: never read or write this browser's saved setup.
+    S.ephemeral = true;
+    S.handoverEnv = isEncrypted(EMBEDDED) ? EMBEDDED : null;
+    S.screen = 'guidelock';
+    render();
+    return;
+  }
+  startApp();
+}
+
+function startApp() {
   const prefs = readPrefs();
-  if (prefs.view) S.view = prefs.view;
+  S.view = VIEWS.includes(prefs.view) ? prefs.view : 'plan';
   const stored = readStored();
   if (!stored) {
     S.screen = 'welcome';
@@ -591,6 +811,4 @@ export function boot() {
     }
   }
   render();
-  // Ctrl+P prints the recovery plan too, not a blank page.
-  window.addEventListener('beforeprint', () => { if (S.screen === 'app') buildPlan(); else $('#print').replaceChildren(); });
 }

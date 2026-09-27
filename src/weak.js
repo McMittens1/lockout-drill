@@ -1,42 +1,37 @@
-// Weak spots: whole-setup analysis. Which accounts fall to the fewest losses, which single
-// things take the most with them, which loops exist, and what to fix first.
+// Weak spots: whole-setup analysis shown on the Plan page. Which accounts fall to the fewest
+// losses, which single things take the most with them, which loops exist, and what to fix first.
 
 import { h, icon, stateChip, plural, listText } from './ui.js';
 import { S, commit, analysis, memo, fixesFor } from './store.js';
 import { LOCKED, APPEAL, SLOW, OK } from './engine.js';
 import { bestFixes } from './advice.js';
 
-export function weakView(openEditor, goDrill, printPlan) {
+// Summary numbers for the Plan page.
+export function weakSummary() {
   const an = analysis();
   const p = S.profile;
   const label = id => an.graph.nodes.get(id)?.label ?? id;
-  const accounts = p.accounts;
-  if (!accounts.length) return h('div', { class: 'weak' }, h('p', { class: 'empty' }, 'Add accounts in Setup to see your weak spots.'));
-
-  const fragile = accounts
+  const fragile = p.accounts
     .map(a => ({ a, n: an.resilience.get(a.id), sets: an.sets.get(a.id) || [] }))
     .sort((x, y) => x.n - y.n || (y.a.important - x.a.important) || x.a.name.localeCompare(y.a.name));
   const ones = fragile.filter(f => f.n === 1);
   const broken = fragile.filter(f => f.n === 0);
-
   // Every fragile account paired with each of its smallest lockout sets.
   const minSize = Math.min(...fragile.filter(f => f.n > 0 && f.sets.length).map(f => f.n), Infinity);
   const pairs = fragile.filter(f => f.n > 0 && f.n === minSize && f.n <= 2).flatMap(f => f.sets.filter(s => s.length === f.n).slice(0, 3).map(s => ({ accountId: f.a.id, lost: s })));
   const top = memo('weak:top', () => (pairs.length ? bestFixes(p, pairs, 3) : []));
+  const headline = !p.accounts.length ? 'Add accounts to see your weak spots.'
+    : broken.length ? `${plural(broken.length, 'account')} ${broken.length === 1 ? "doesn't" : "don't"} work even today.`
+      : ones.length ? `${plural(ones.length, 'account')} can be lost to a single thing going wrong.`
+        : `No single loss locks you out. Losing ${an.maxSize >= 3 ? 'two or three' : 'two'} things at once is what to watch.`;
+  return { an, label, fragile, ones, broken, top, minSize, headline };
+}
 
-  const headline = broken.length
-    ? `${plural(broken.length, 'account')} ${broken.length === 1 ? "doesn't" : "don't"} work even today.`
-    : ones.length
-      ? `${plural(ones.length, 'account')} can be lost to a single thing going wrong.`
-      : `No single loss locks you out. Losing ${an.maxSize >= 3 ? 'two or three' : 'two'} things at once is what to watch.`;
-
-  return h('div', { class: 'weak' },
-    h('header', { class: 'result-head' },
-      h('h1', null, 'Weak spots'),
-      h('p', { class: 'verdict' }, headline),
-      h('p', { class: 'blurb' }, `We tried losing every thing on your list, alone and in combinations of up to ${an.maxSize} (${an.evaluated.toLocaleString()} drills).`),
-    ),
-
+// The whole-setup analysis, as sections for the Plan page.
+export function weakSections(openEditor) {
+  const { an, label, fragile, top, minSize } = weakSummary();
+  if (!S.profile.accounts.length) return [];
+  return [
     top.length ? h('section', null,
       h('h2', null, 'Fix these first'),
       h('p', { class: 'sub' }, `Changes that protect the most accounts against their weakest ${minSize === 1 ? 'single loss' : 'pair of losses'}. Each one was checked by re-running the drills with the change in place.`),
@@ -49,7 +44,7 @@ export function weakView(openEditor, goDrill, printPlan) {
 
     h('section', null,
       h('h2', null, 'How many losses each account survives'),
-      h('p', { class: 'sub' }, 'The number is the fewest things you could lose at once and be locked out (or left with only a support appeal).'),
+      h('p', { class: 'sub' }, `The fewest things you could lose at once and be locked out, or left with only a support appeal. We tried every thing on your list, alone and in combinations of up to ${an.maxSize} (${an.evaluated.toLocaleString()} drills).`),
       h('div', { class: 'card', style: 'padding:0' }, fragile.map(f => resilienceRow(f, label, openEditor, an))),
     ),
 
@@ -75,7 +70,7 @@ export function weakView(openEditor, goDrill, printPlan) {
         ])),
         h('p', { class: 'note', style: 'margin-top:8px' }, c.triggers.length
           ? ['It bites if you lose ', h('b', null, c.triggers.map(t => listText(t.map(label))).join(', or ')), '.']
-          : "Nothing we tried breaks it: something outside the loop always gets you in."),
+          : 'Nothing we tried breaks it: something outside the loop always gets you in.'),
       ))),
     ) : null,
 
@@ -83,15 +78,7 @@ export function weakView(openEditor, goDrill, printPlan) {
       h('h2', null, 'Also worth checking'),
       h('ul', { class: 'warn-list' }, an.warnings.map(w => h('li', null, h('span', { class: 'lvl ' + w.level }), h('span', null, w.text)))),
     ) : null,
-
-    h('section', null,
-      h('h2', null, 'Next'),
-      h('div', { class: 'fieldrow' },
-        h('button', { class: 'btn', onclick: goDrill }, 'Run the drills'),
-        h('button', { class: 'btn', onclick: printPlan }, icon('print'), 'Print a recovery plan'),
-      ),
-    ),
-  );
+  ];
 }
 
 function resilienceRow(f, label, openEditor, an) {

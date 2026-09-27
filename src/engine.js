@@ -143,6 +143,7 @@ export function compile(profile) {
         direct: false,
         inPerson: !!w.inPerson,
         who: w.who || 'both',
+        ...(w.dataOnly ? { dataOnly: true } : {}),
         steps: (w.steps || []).map(s => ({
           label: s.label,
           types: s.types,
@@ -204,6 +205,7 @@ function prepare(graph) {
   const nodes = ids.map(id => graph.nodes.get(id));
   const ways = nodes.map(n => n.ways.map(w => ({
     w,
+    dataOnly: !!w.dataOnly,
     cap: SPEED_CAP[w.speed],
     steps: w.steps.map(s => Int32Array.from(s.anyOf.map(a => index.get(a.ref)).filter(i => i !== undefined))),
   })));
@@ -216,6 +218,11 @@ function prepare(graph) {
 // Worklist propagation from all-locked upward (least fixed point). Every time a node rises we
 // stamp it with a strictly increasing clock; a node's value is always computed from values that
 // were stamped earlier, so explanations that only follow earlier stamps are well-founded.
+//
+// Some routes hand over an account's data or money but not a way to sign in (Google's Inactive
+// Account Manager, Apple's Legacy Contact, a bank's estate process). They count for the account
+// itself but can never unlock anything else: the fixed point runs without them (`use`), then they
+// lift only their own account, stamped after everything else.
 function run(fast, ctx) {
   const n = fast.ids.length;
   const st = new Uint8Array(n);
@@ -236,7 +243,7 @@ function run(fast, ctx) {
     const ws = fast.ways[i];
     for (let k = 0; k < ws.length && v < OK; k++) {
       const w = ws[k];
-      if (!wayApplies(node, w.w, ctx)) continue;
+      if (w.dataOnly || !wayApplies(node, w.w, ctx)) continue;
       let x = w.cap;
       for (let s = 0; s < w.steps.length && x > v; s++) {
         let best = LOCKED;
@@ -254,20 +261,45 @@ function run(fast, ctx) {
       for (let k = 0; k < d.length; k++) if (!inQ[d[k]]) push(d[k]);
     }
   }
-  return { st, first };
+  const use = st.slice();
+  for (let i = 0; i < n; i++) {
+    const node = fast.nodes[i];
+    let v = st[i];
+    for (const w of fast.ways[i]) {
+      if (!w.dataOnly || v === OK || !wayApplies(node, w.w, ctx)) continue;
+      let x = w.cap;
+      for (let s = 0; s < w.steps.length && x > v; s++) {
+        let best = LOCKED;
+        for (const a of w.steps[s]) if (use[a] > best) best = use[a];
+        if (best < x) x = best;
+      }
+      if (x > v) v = x;
+    }
+    if (v > st[i]) {
+      clock++;
+      for (let l = st[i] + 1; l <= v; l++) first[i * 4 + l] = clock;
+      st[i] = v;
+    }
+  }
+  return { st, first, use };
 }
+
+// What a node is worth to the nodes that depend on it (data-only routes excluded).
+const usable = (sim, id) => (sim.use || sim.state).get(id) ?? LOCKED;
 
 export function simulate(graph, ctxOrOpts) {
   const ctx = ctxOrOpts && ctxOrOpts.lost instanceof Set ? ctxOrOpts : makeContext(ctxOrOpts);
   const fast = prepare(graph);
-  const { st, first } = run(fast, ctx);
+  const { st, first, use } = run(fast, ctx);
   const state = new Map();
+  const useMap = new Map();
   const firstMap = new Map();
   fast.ids.forEach((id, i) => {
     state.set(id, st[i]);
+    useMap.set(id, use[i]);
     firstMap.set(id, [first[i * 4], first[i * 4 + 1], first[i * 4 + 2], first[i * 4 + 3]]);
   });
-  return { ctx, state, first: firstMap };
+  return { ctx, state, use: useMap, first: firstMap };
 }
 
 // Array-level simulation for the analysis loops (no Map conversion).
@@ -293,14 +325,15 @@ export function derivation(graph, sim, id, depth = 6) {
     out.base = true;
     return out;
   }
-  for (const w of node.ways) {
+  const ordered = [...node.ways.filter(w => !w.dataOnly), ...node.ways.filter(w => w.dataOnly)];
+  for (const w of ordered) {
     if (!wayApplies(node, w, sim.ctx) || SPEED_CAP[w.speed] < level) continue;
     const picks = [];
     let ok = true;
     for (const s of w.steps) {
       let pick = null;
       for (const alt of s.anyOf) {
-        if (sim.state.get(alt.ref) >= level && sim.first.get(alt.ref)[level] < at) {
+        if (usable(sim, alt.ref) >= level && sim.first.get(alt.ref)[level] < at) {
           if (!pick || sim.first.get(alt.ref)[level] < sim.first.get(pick.ref)[level]) pick = alt;
         }
       }
@@ -308,7 +341,7 @@ export function derivation(graph, sim, id, depth = 6) {
       picks.push({ step: s.label, via: pick.via, ref: pick.ref, label: refLabel(graph, pick.ref), sub: depth > 0 ? derivation(graph, sim, pick.ref, depth - 1) : null });
     }
     if (ok) {
-      out.way = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind };
+      out.way = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, ...(w.dataOnly ? { dataOnly: true } : {}) };
       out.picks = picks;
       return out;
     }
@@ -317,13 +350,15 @@ export function derivation(graph, sim, id, depth = 6) {
 }
 
 // Why a node isn't better than it is: every applicable way with its failing steps, recursing
-// into derived nodes. Revisiting a node on the current path is reported as a cycle.
+// into derived nodes. Revisiting a node on the current path is reported as a cycle. Nodes met as
+// options are judged by what they are worth to others (`use`): their data-only routes don't count.
 export function blockers(graph, sim, id, opts = {}) {
   const depth = opts.depth ?? 5;
   const target = opts.target ?? OK;
   const path = opts.path ?? [];
+  const asOption = !!opts.use;
   const node = graph.nodes.get(id);
-  const state = sim.state.get(id);
+  const state = asOption ? usable(sim, id) : sim.state.get(id);
   const out = { id, label: node?.label ?? id, state, lost: sim.ctx.lost.has(id) || (!!node?.derived && sim.ctx.lost.has(node.derived)), ways: [], cycle: null };
   if (!node || state >= target) return out;
   if (path.includes(id)) {
@@ -333,20 +368,20 @@ export function blockers(graph, sim, id, opts = {}) {
   if (depth <= 0) { out.truncated = true; return out; }
   const nextPath = [...path, id];
   for (const w of node.ways) {
-    const applies = wayApplies(node, w, sim.ctx);
-    const value = applies ? wayValue(w, r => sim.state.get(r) ?? LOCKED) : LOCKED;
-    const wayOut = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, value, disabled: applies ? null : disabledReason(node, w, sim.ctx), failing: [] };
+    const applies = wayApplies(node, w, sim.ctx) && !(asOption && w.dataOnly);
+    const value = applies ? wayValue(w, r => usable(sim, r)) : LOCKED;
+    const wayOut = { id: w.id, label: w.label, speed: w.speed, kind: w.wayKind, value, disabled: applies ? null : (asOption && w.dataOnly && wayApplies(node, w, sim.ctx) ? 'data-only' : disabledReason(node, w, sim.ctx)), failing: [] };
     if (applies) {
       const need = Math.min(target, SPEED_CAP[w.speed]);
       for (const s of w.steps) {
-        const best = Math.max(LOCKED, ...s.anyOf.map(a => sim.state.get(a.ref) ?? LOCKED));
+        const best = Math.max(LOCKED, ...s.anyOf.map(a => usable(sim, a.ref)));
         if (best >= need) continue;
         wayOut.failing.push({
           step: s.label,
           empty: s.anyOf.length === 0,
           options: s.anyOf.map(a => ({
-            ref: a.ref, via: a.via, label: refLabel(graph, a.ref), state: sim.state.get(a.ref) ?? LOCKED,
-            why: blockers(graph, sim, a.ref, { depth: depth - 1, target: need, path: nextPath }),
+            ref: a.ref, via: a.via, label: refLabel(graph, a.ref), state: usable(sim, a.ref),
+            why: blockers(graph, sim, a.ref, { depth: depth - 1, target: need, path: nextPath, use: true }),
           })),
         });
       }
@@ -751,12 +786,12 @@ function topPlace(byId, at) {
 // Only steps that actually hold a node below the level it needs are followed, and that level is
 // carried down each edge (capped by the way's speed).
 export function stuckLoop(graph, sim, id, target = OK) {
-  const st = (r) => sim.state.get(r) ?? LOCKED;
+  const st = (r) => usable(sim, r);
   const next = (nid, t) => {
     const n = graph.nodes.get(nid);
     const out = [];
     for (const w of n?.ways || []) {
-      if (!wayApplies(n, w, sim.ctx)) continue;
+      if (w.dataOnly || !wayApplies(n, w, sim.ctx)) continue;
       const need = Math.min(t, SPEED_CAP[w.speed]);
       if (need <= st(nid)) continue; // this way couldn't lift the node above where it already is
       const bests = w.steps.map(s => s.anyOf.reduce((m, a) => Math.max(m, st(a.ref)), LOCKED));

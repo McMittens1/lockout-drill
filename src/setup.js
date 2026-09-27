@@ -2,7 +2,7 @@
 
 import { h, icon, stateChip, plural, readFile } from './ui.js';
 import { S, commit, rerender, removeItem, usages, graph, scenarioResult, toast } from './store.js';
-import { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, accountFromTemplate, accepts, templateForDomain } from './templates.js';
+import { THING_KINDS, THING_GROUPS, ACCOUNT_CATEGORIES, VIA, SPEEDS, WAY_KINDS, TEMPLATES, TEMPLATE_BY_ID, AUTHAPP_PRESETS, WISHES, LEGACY_BY_TEMPLATE, accountFromTemplate, accepts, templateForDomain } from './templates.js';
 import { sitesFromExport } from './csv.js';
 import { uid } from './advice.js';
 
@@ -129,7 +129,7 @@ function thingRow(t) {
   return h('div', { class: 'thing' },
     h('span', { class: 'k' }, icon(t.kind)),
     h('input', { class: 'name', type: 'text', value: t.name, 'aria-label': THING_KINDS[t.kind].label + ' name', dataset: { k: k + ':name' }, onchange: e => patchThing(t.id, { name: e.target.value.trim() || THING_KINDS[t.kind].label }) }),
-    h('button', { class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove ' + t.name, onclick: del }, icon('trash')),
+    h('button', { class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove ' + t.name, onclick: del, dataset: { k: k + ':del' } }, icon('trash')),
     h('div', { class: 'attrs' }, attrs(t, k)),
   );
 }
@@ -138,6 +138,10 @@ function attrs(t, k) {
   const out = [];
   const where = () => h('label', { class: 'f' }, 'Kept',
     select(k + ':at', t.at || 'carried', [['carried', 'With me every day'], ...placeOptions().map(([v, n]) => [v, 'At ' + n])], v => patchThing(t.id, { at: v }), 'Where it is kept'));
+  // A short note for the handover guide (which drawer, where the key to the safe is).
+  const noteField = () => (t.note || S.noteOpen.has(t.id))
+    ? h('label', { class: 'f tnote' }, 'Note', h('input', { type: 'text', value: t.note || '', maxlength: '500', placeholder: `For ${trusted()}: which drawer, where the key is… never codes`, dataset: { k: k + ':note' }, onchange: e => { S.noteOpen.delete(t.id); patchThing(t.id, { note: e.target.value.trim().slice(0, 500) }); } }))
+    : h('button', { class: 'btn small ghost addnote', onclick: () => { S.noteOpen.add(t.id); S.focusAfter = k + ':note'; rerender(); }, dataset: { k: k + ':addnote' } }, icon('plus'), 'Note');
   const heirToggle = () => (!t.at || t.at === 'carried')
     ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: t.heirCan !== false, dataset: { k: k + ':heir' }, onchange: e => patchThing(t.id, { heirCan: e.target.checked ? '' : false }) }), `${trusted()} would get it back`)
     : null;
@@ -152,10 +156,12 @@ function attrs(t, k) {
           } else patchThing(t.id, { unlock: v });
         }, 'Unlocked with')));
       out.push(heirToggle());
+      out.push(noteField());
       break;
     case 'seckey': case 'paper': case 'photoid':
       out.push(where());
       out.push(heirToggle());
+      out.push(noteField());
       break;
     case 'number':
       out.push(h('label', { class: 'f' }, 'SIM in',
@@ -182,6 +188,7 @@ function attrs(t, k) {
       if (!t.inside) out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!t.home, dataset: { k: k + ':home' }, onchange: e => patchThing(t.id, { home: e.target.checked }) }), 'Home'));
       if (t.inside) out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!t.fireproof, dataset: { k: k + ':fp' }, onchange: e => patchThing(t.id, { fireproof: e.target.checked }) }), 'Fireproof'));
       out.push(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: t.heirCan !== false, dataset: { k: k + ':heir' }, onchange: e => patchThing(t.id, { heirCan: e.target.checked ? '' : false }) }), `${trusted()} can get in`));
+      out.push(noteField());
       break;
     }
     case 'person':
@@ -312,6 +319,15 @@ export function accountDialog(id, close) {
         h('div', { style: 'display:grid;gap:8px' }, a.ways.map((w, wi) => wayEditor(a, w, wi, edit))),
         h('button', { class: 'btn small', style: 'margin-top:10px', onclick: addWay }, icon('plus'), 'Add another way in'),
       ),
+      h('div', { class: 'ho-acct' },
+        h('h3', { style: 'font-size:15px;margin-bottom:4px' }, 'If something happens to you'),
+        h('p', { class: 'note', style: 'margin-bottom:10px' }, `Goes into the handover guide for ${trusted()}.`),
+        h('label', { class: 'field' }, 'What should happen to it',
+          select('a:wish', a.wish || '', [['', 'Not decided'], ...Object.entries(WISHES)], v => edit(acc => { if (v) acc.wish = v; else delete acc.wish; }), 'What should happen to it')),
+        h('label', { class: 'field', style: 'margin-top:10px' }, `Notes for ${trusted()}`,
+          h('textarea', { rows: '3', maxlength: '2000', value: a.note || '', placeholder: "What's in it, what to save, who to tell. Never passwords or codes.", dataset: { k: 'a:note' }, onchange: e => edit(acc => { const v = e.target.value.trim().slice(0, 2000); if (v) acc.note = v; else delete acc.note; }) })),
+        a.template && Object.hasOwn(LEGACY_BY_TEMPLATE, a.template) ? h('p', { class: 'note', style: 'margin-top:8px' }, h('b', null, 'Official route for families: '), LEGACY_BY_TEMPLATE[a.template]) : null,
+      ),
     ),
     h('div', { class: 'dlg-f' },
       h('button', { class: 'btn danger', onclick: () => { const name = a.name; close(); commit(p => removeItem(p, id), { undoLabel: `Deleted ${name}` }); } }, icon('trash'), 'Delete account'),
@@ -360,7 +376,7 @@ const NEW_FOR = {
 };
 
 function stepEditor(a, w, wi, s, si, edit, k) {
-  const phrase = (via, id) => (VIA[via]?.phrase || '{x}').replace('{x}', nameOf(id));
+  const phrase = (via, id) => (VIA[via]?.phrase || '{x}').replace('{x}', () => nameOf(id));
   const candidates = [...things(), ...S.profile.accounts.filter(x => x.id !== a.id)];
   const groups = s.types.map(type => ({ type, items: candidates.filter(c => accepts(type, c) && !s.anyOf.some(o => o.ref === c.id && o.via === type)) }));
   const onPick = (v) => {
