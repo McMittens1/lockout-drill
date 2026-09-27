@@ -1,0 +1,345 @@
+<title>Lockout Drill Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f4f5f2;
+    --surface: #fbfcfa;
+    --sunk: #e9ebe6;
+    --ink: #15181c;
+    --ink-2: #3c434b;
+    --muted: #5e656d;
+    --rule: #d9ddd6;
+    --accent: #2350b0;
+    --locked: #a8231b;
+    --locked-bg: #f6dcd8;
+    --appeal: #a8431a;
+    --slow: #875400;
+    --slow-bg: #f6ecd2;
+    --ok: #1c6d42;
+    --ok-bg: #dcefe3;
+    --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111317; --surface: #171a1f; --sunk: #1f232a; --ink: #e8eae6; --ink-2: #c4c9c4;
+      --muted: #9aa1a8; --rule: #2b3037; --accent: #93b2ff; --locked: #ff8d84; --locked-bg: #3a1a18;
+      --appeal: #ffa27a; --slow: #efc15f; --slow-bg: #33290f; --ok: #72d29f; --ok-bg: #15301f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #111317; --surface: #171a1f; --sunk: #1f232a; --ink: #e8eae6; --ink-2: #c4c9c4;
+    --muted: #9aa1a8; --rule: #2b3037; --accent: #93b2ff; --locked: #ff8d84; --locked-bg: #3a1a18;
+    --appeal: #ffa27a; --slow: #efc15f; --slow-bg: #33290f; --ok: #72d29f; --ok-bg: #15301f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 17px/1.62 var(--serif);
+    padding-inline: 20px;
+    padding-block: 0 72px;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  h1, h2, h3 { font-family: var(--display); font-stretch: 85%; line-height: 1.12; margin: 0; text-wrap: balance; color: var(--ink); }
+  h2 { font-size: 1.55rem; font-weight: 750; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; font-weight: 700; }
+  p { margin: 0; }
+  .mono { font-family: var(--mono); font-size: 0.86em; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .page { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 56px; }
+  .toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 28px); align-self: start; padding-top: 44px; }
+  .toc .mark { display: flex; align-items: center; gap: 9px; font: 700 15px/1 var(--display); font-stretch: 90%; margin-bottom: 26px; }
+  .toc .mark svg { width: 26px; height: 26px; flex: none; }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font: 500 14px/1.3 var(--display); font-stretch: 92%; }
+  .toc a { display: block; padding: 5px 0 5px 12px; border-left: 2px solid var(--rule); color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--ink); border-left-color: var(--ink-2); }
+
+  main { min-width: 0; max-width: 700px; padding-top: 44px; display: grid; gap: 56px; }
+  section { display: grid; gap: 16px; scroll-margin-top: 24px; }
+  .eyebrow { font: 600 12px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  header.lead { display: grid; gap: 18px; }
+  header.lead h1 { font-size: clamp(2.2rem, 5.5vw, 3.4rem); font-weight: 800; font-stretch: 78%; letter-spacing: -0.015em; }
+  .lede { font-size: 1.16rem; color: var(--ink-2); max-width: 62ch; }
+  .body-copy { color: var(--ink-2); max-width: 65ch; }
+  ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; color: var(--ink-2); max-width: 65ch; }
+  ul.plain li::marker { color: var(--muted); }
+
+  /* The selection funnel: 50 pains, 8 shortlisted, 1 built */
+  .funnel { display: grid; gap: 10px; margin-top: 6px; }
+  .frow { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: 14px; align-items: center; }
+  .frow .n { font: 500 1.5rem/1 var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .frow .bar { height: 30px; border-radius: 3px; background: var(--sunk); display: flex; align-items: center; padding-inline: 10px; font: 600 13px/1.2 var(--display); font-stretch: 92%; color: var(--ink-2); min-width: 0; }
+  .frow .bar span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .frow.last .bar { background: var(--ink); color: var(--ground); }
+  .stats { display: flex; flex-wrap: wrap; gap: 6px 22px; font: 13px/1.4 var(--mono); color: var(--muted); }
+  .stats b { color: var(--ink); font-weight: 500; }
+
+  /* A real drill result, as the app shows it */
+  .specimen { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; font-family: var(--display); font-stretch: 95%; }
+  .specimen .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .specimen .scn { font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .specimen .acct { font-weight: 700; font-size: 1.05rem; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font: 650 12.5px/1 var(--display); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .c-locked { color: var(--locked); background: var(--locked-bg); }
+  .c-slow { color: var(--slow); background: var(--slow-bg); }
+  .c-ok { color: var(--ok); background: var(--ok-bg); }
+  .c-muted { color: var(--muted); background: var(--sunk); }
+  .cause { font: 13px/1.3 var(--display); background: var(--sunk); padding: 3px 8px; border-radius: 4px; color: var(--ink-2); }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
+  .chain .node { background: var(--sunk); padding: 3px 9px; border-radius: 4px; font-weight: 600; }
+  .chain .edge { color: var(--muted); font-size: 12.5px; }
+  .specimen .why { font: 14px/1.5 var(--serif); color: var(--ink-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Evidence list: a hanging date column */
+  .evidence { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
+  .evidence li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .evidence .when { font: 13px/1.5 var(--mono); color: var(--muted); padding-top: 2px; }
+  .evidence .what { color: var(--ink-2); }
+  .evidence .what b { color: var(--ink); font-weight: 600; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.45; min-width: 560px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 600 12px/1.3 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--sunk); }
+  td:first-child { font-family: var(--display); font-stretch: 95%; font-weight: 650; color: var(--ink); }
+  td { color: var(--ink-2); }
+  tr.win td { background: color-mix(in srgb, var(--ok-bg) 55%, transparent); }
+
+  .claims { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .claim { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 4px; }
+  .claim b { font: 700 15px/1.25 var(--display); font-stretch: 92%; }
+  .claim span { font-size: 15px; color: var(--ink-2); }
+
+  .facts { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+  .fact { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+  .fact b { font: 700 15px/1.5 var(--display); font-stretch: 92%; }
+  .fact span { color: var(--ink-2); font-size: 16px; }
+
+  .callout { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; color: var(--ink-2); font-size: 16px; }
+  .sources { columns: 2 280px; column-gap: 32px; font-size: 14.5px; }
+  .sources h3 { break-after: avoid; margin: 14px 0 6px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .sources h3:first-child { margin-top: 0; }
+  .sources ul { margin: 0 0 8px; padding-left: 1em; display: grid; gap: 5px; break-inside: avoid-column; }
+  .sources li { color: var(--ink-2); overflow-wrap: anywhere; }
+  footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--rule); padding-top: 18px; }
+
+  @media (max-width: 860px) {
+    .page { grid-template-columns: 1fr; gap: 0; }
+    .toc { position: static; padding-top: 28px; }
+    .toc ol { display: none; }
+    .toc .mark { margin-bottom: 0; }
+    main { padding-top: 24px; gap: 44px; }
+  }
+  @media (max-width: 520px) {
+    body { font-size: 16.5px; padding-inline: 16px; }
+    .evidence li, .fact { grid-template-columns: 1fr; gap: 2px; }
+    .frow { grid-template-columns: 3rem minmax(0, 1fr); gap: 10px; }
+    .frow .n { font-size: 1.2rem; }
+  }
+</style>
+
+<div class="page">
+  <nav class="toc" aria-label="Contents">
+    <div class="mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="currentColor"/><path d="M11 14v-3a5 5 0 0 1 9.4-2.4" fill="none" stroke="var(--ground)" stroke-width="2.4" stroke-linecap="round"/><rect x="8.5" y="14" width="15" height="11" rx="2.2" fill="var(--ground)"/><path d="M16 17.2v2.6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      Lockout Drill
+    </div>
+    <ol>
+      <li><a href="#problem">The problem</a></li>
+      <li><a href="#evidence">Evidence</a></li>
+      <li><a href="#workarounds">What people do now</a></li>
+      <li><a href="#landscape">What already exists</a></li>
+      <li><a href="#new">What's new</a></li>
+      <li><a href="#choice">How it was chosen</a></li>
+      <li><a href="#rules">Providers' real rules</a></li>
+      <li><a href="#verification">Verification</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="lead">
+      <p class="eyebrow">Research record · 26 September 2026</p>
+      <h1>Why Lockout Drill exists</h1>
+      <p class="lede">People find out their accounts depend on each other in circles only after the phone is gone. The fix everyone recommends is a "lost-phone drill" done by hand on paper. I looked for a tool that runs that drill for you, across every account, and found research prototypes but nothing a person can use. So I built one.</p>
+      <div class="funnel" role="img" aria-label="50 recurring pain points found, 8 shortlisted, 1 built">
+        <div class="frow"><span class="n">50</span><div class="bar" style="width:100%"><span>recurring pain points, each with 2+ independent sources</span></div></div>
+        <div class="frow"><span class="n">8</span><div class="bar" style="width:52%"><span>shortlisted and attacked for novelty</span></div></div>
+        <div class="frow last"><span class="n">1</span><div class="bar" style="width:24%"><span>built</span></div></div>
+      </div>
+      <p class="stats"><span><b>798</b> logged web searches</span><span><b>64</b> research and review agents</span><span><b>46</b> providers' help pages read</span><span><b>54</b> automated tests</span></p>
+    </header>
+
+    <section id="problem">
+      <p class="eyebrow">The problem</p>
+      <h2>Your accounts unlock each other, until one piece goes missing</h2>
+      <p class="body-copy">A typical setup looks safe on a normal day. The Gmail password lives in the password manager. The password manager's second factor lives in an authenticator app on the phone. The authenticator backs up to Gmail. The carrier texts its sign-in code to the phone number, so getting the number back needs the carrier. Lose the phone abroad and every one of those links fails at once. The big providers have no human support, so the lockout is often permanent. Heirs hit the same wall.</p>
+      <div class="specimen" aria-label="Example drill result from the sample setup">
+        <div class="top"><span class="scn">Drill · Robbed while traveling abroad</span></div>
+        <div class="top"><span class="chip c-locked">Locked out</span><span class="acct">Verizon (carrier)</span><span class="cause">iPhone · lost</span><span class="cause">Home · far away</span></div>
+        <div class="chain" aria-label="Circular dependency"><span class="node">Verizon</span><span class="edge">texts its code to →</span><span class="node">+1 555-0142</span><span class="edge">which only Verizon can restore →</span><span class="node">Verizon</span></div>
+        <p class="why">Store visit with photo ID: not possible from abroad. Verified fix: set up a Verizon account PIN and memorize it, which turns this into <span class="chip c-slow">Takes days</span>.</p>
+        <div class="legend" aria-label="Result states"><span class="chip c-ok">Fine</span><span class="chip c-slow">Takes days</span><span class="chip c-muted">Appeal only</span><span class="chip c-locked">Locked out</span></div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <p class="eyebrow">Evidence</p>
+      <h2>A recurring, current problem</h2>
+      <ul class="evidence">
+        <li><span class="when">Sep 2026</span><span class="what"><b><a href="https://news.ycombinator.com/item?id=49742976">Ask HN: How to recover Google auth after phone stolen?</a></b> 124 points, 131 comments. The poster was fully locked out; eight or more commenters told similar stories.</span></li>
+        <li><span class="when">2022</span><span class="what"><b><a href="https://news.ycombinator.com/item?id=33963269">Ask HN: If I get locked out of everything, please try to help me</a></b> 659 points. A phone failure cascaded into near-total lockout.</span></li>
+        <li><span class="when">2025</span><span class="what"><b><a href="https://news.ycombinator.com/item?id=42581148">Ask HN: Google login has circular dependency</a></b> People hit these loops and misread them.</span></li>
+        <li><span class="when">2024–26</span><span class="what">Google recovery loops and lost-number lockouts: <a href="https://news.ycombinator.com/item?id=42350245">10 years of data lost</a>, <a href="https://news.ycombinator.com/item?id=44952830">recovery email accepted, then refused</a>, <a href="https://news.ycombinator.com/item?id=39269879">old number gone</a>, <a href="https://news.ycombinator.com/item?id=47650054">locked out while abroad</a>.</span></li>
+        <li><span class="when">2025–26</span><span class="what">Heirs blocked by phone-based 2FA: <a href="https://news.ycombinator.com/item?id=43034787">a family with the password list still couldn't get in</a>, <a href="https://news.ycombinator.com/item?id=48372317">digital end-of-life plans</a>, <a href="https://www.bogleheads.org/forum/viewtopic.php?t=370838">Bogleheads: how do heirs get 2FA access?</a></span></li>
+        <li><span class="when">ICISSP 2024</span><span class="what"><b><a href="https://arxiv.org/html/2403.15080">Study of 185 real Google and Apple setups</a></b> 10 Google users and 17 Apple users would lose their account by losing a single phone.</span></li>
+        <li><span class="when">CHI 2022</span><span class="what"><b><a href="https://people.inf.ethz.ch/basin/pubs/acm22.pdf">"I'm Surprised So Much Is Connected"</a></b> Participants' account graphs contained cycles; one was locked out of both email accounts for 30 days after losing a number.</span></li>
+      </ul>
+    </section>
+
+    <section id="workarounds">
+      <p class="eyebrow">What people do now</p>
+      <h2>The drill is done by hand, if at all</h2>
+      <ul class="plain">
+        <li>An HN user runs <a href="https://news.ycombinator.com/item?id=19778241">"little tabletop simulations"</a> of losing the phone, a hospital stay and death. <a href="https://news.ycombinator.com/item?id=21410736">Another drew the graph by hand.</a></li>
+        <li>Security guides tell readers to <a href="https://dev.to/adev3loper/your-recovery-path-is-your-real-login-575a">draw their recovery graph, find the loops and run a lost-phone drill</a>, and offer no tool to do it.</li>
+        <li>People keep printed backup-code sheets and <a href="https://github.com/danieldurrans/Digital-Estate-Emergency-Kit">digital-estate templates</a>: static documents with no analysis.</li>
+      </ul>
+    </section>
+
+    <section id="landscape">
+      <p class="eyebrow">What already exists</p>
+      <h2>Research prototypes and single-provider checks</h2>
+      <p class="body-copy">Two independent agents tried to prove the idea already existed, one through open source and package registries, one through commercial products and app stores. These are the closest things they found.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Closest thing</th><th>What it does</th><th>What it doesn't do</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://infsec.ethz.ch/research/software/account_access_graphs.html">Account Access Graphs</a><br><span class="mono">ETH Zürich, CCS 2019</span></td><td>The formal model of accounts, devices and keys with computed lockout sets. Lockout Drill builds on it and credits it.</td><td>Archived research code (Java and Haskell). No scenarios, explanations, heirs, templates or fixes.</td></tr>
+            <tr><td><a href="https://github.com/Digital-Security-Lab/user-account-study-icissp2024">AAG Analyser</a><br><span class="mono">ICISSP 2024</span></td><td>A study tool that scores account graphs.</td><td>Scores only: no scenarios or causal chains. Dormant since March 2024.</td></tr>
+            <tr><td><a href="https://github.com/lnschroeder/account-access-graphs">account-access-graphs</a><br><span class="mono">master's thesis</span></td><td>Propagates compromise through a graph.</td><td>The attacker's view, not lockout. No heir mode, no fixes.</td></tr>
+            <tr><td><a href="https://recoverycodes.eu/">RecoveryCodes</a><br><span class="mono">Show HN, Aug 2026</span></td><td>Team SaaS mapping authenticators to accounts.</td><td>Cloud-hosted, pre-launch. No transitive chains, disasters or death scenario.</td></tr>
+            <tr><td><a href="https://github.com/dawnportinfo-design/number-exit-kit">Number Exit Kit</a><br><span class="mono">Jul 2026</span></td><td>Lists every place a phone number is used.</td><td>Phone numbers only. No devices, places or loops.</td></tr>
+            <tr><td><a href="https://bitwarden.com/help/reports/">Password-manager health reports</a></td><td>Flag sites that support 2FA where it is off.</td><td>No idea which device, number or email each factor depends on.</td></tr>
+            <tr><td>Google Security Checkup, Apple recovery contacts</td><td>Recovery settings inside one provider.</td><td>Blind across providers, which is where the loops are.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="new">
+      <p class="eyebrow">What's new</p>
+      <h2>The model is published. A tool people can use is not.</h2>
+      <p class="body-copy">The lockout-set math dates from 2019, so it isn't claimed as new. After searching GitHub, npm and PyPI, Product Hunt, AlternativeTo, browser extension stores, app stores, Hacker News launches, papers and consumer guides, I found no maintained, consumer-usable tool that runs named loss scenarios across all your accounts and explains the result. What Lockout Drill adds:</p>
+      <div class="claims">
+        <div class="claim"><b>Named drills</b><span>Phone stolen, robbed abroad, house fire, SIM hijack, forgotten passwords, email hacked, and your death from your heir's side.</span></div>
+        <div class="claim"><b>Three speeds, not yes/no</b><span>Minutes, days, or only by support appeal, because that difference is the whole story when you're locked out.</span></div>
+        <div class="claim"><b>The reason, spelled out</b><span>The exact chain of what blocks each account, and the shortest loop that traps it.</span></div>
+        <div class="claim"><b>Fixes that are proven</b><span>Each suggestion is applied to a copy of your setup and the drill is re-run. Only changes that help are shown.</span></div>
+        <div class="claim"><b>Providers' real rules</b><span>29 templates built from 46 services' own help pages.</span></div>
+        <div class="claim"><b>Offline, one file</b><span>No account, no server. The page's security policy blocks every network request. Optional passphrase encryption.</span></div>
+      </div>
+    </section>
+
+    <section id="choice">
+      <p class="eyebrow">How it was chosen</p>
+      <h2>Fifty pains in, one tool out</h2>
+      <p class="body-copy">Nine researchers each mined a different corner of the web for things people complain about and patch together by hand: developer tools, AI tools, desktop, browser, documents, niche professions, life admin, creators and students, and "I wish there was" threads. A tenth hunted for angles they missed. Eight candidates survived to the kill check, where each one had two agents trying to prove it already existed.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Candidate</th><th>Verdict</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>"What grew on my disk since last week"</td><td><span class="chip c-locked">Exists</span></td><td>DiskHound, TreeMap, SizeTrend, TreeSize and a Microsoft Store app from August 2026 already do it. A plain scan of this machine's home folder also took 20 minutes.</td></tr>
+            <tr><td>Format-preserving YAML and JSON edits</td><td><span class="chip c-locked">Exists</span></td><td>Mature tools cover it.</td></tr>
+            <tr><td>True redaction for Word files</td><td><span class="chip c-slow">Crowded</span></td><td>One open-source tool already ships most of it, and about eight near-clones appeared in 2026.</td></tr>
+            <tr><td>One-shot fix for corporate TLS interception</td><td><span class="chip c-slow">Fading</span></td><td>Covered by scripts, and runtimes are fixing it themselves. Testing it would have meant changing this machine's trust settings.</td></tr>
+            <tr><td>Recover lost browser tabs</td><td><span class="chip c-slow">Partial</span></td><td>Hindsight already parses the formats. The recovery window is tiny, and antivirus would flag it as an infostealer.</td></tr>
+            <tr><td>"Is this old drive already backed up?"</td><td><span class="chip c-slow">Partial</span></td><td>Solved by command-line tools; episodic and unreliable with cloud placeholders.</td></tr>
+            <tr><td>Word review comments into a matrix</td><td><span class="chip c-slow">Runner-up</span></td><td>Strong demand (700+ "same question" votes) but a narrower audience.</td></tr>
+            <tr class="win"><td>Lockout Drill</td><td><span class="chip c-ok">Gap</span></td><td>Real, painful and universal, live in September 2026, with a specific gap. Buildable offline with no dependencies.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="rules">
+      <p class="eyebrow">Providers' real rules</p>
+      <h2>Templates come from the help pages</h2>
+      <p class="body-copy">Five agents read the sign-in and recovery pages of 46 services. A few of the facts that change drill results:</p>
+      <div class="facts">
+        <div class="fact"><b>Apple</b><span>Any signed-in Apple device plus its passcode can reset the Apple Account password. A recovery key or security keys switch off Account Recovery. Legacy Contacts don't get Keychain passwords.</span></div>
+        <div class="fact"><b>Google</b><span>A passkey skips 2-Step Verification. Without a backup method, recovery takes 3–5 business days with no phone support. New recovery info takes 7 days to count.</span></div>
+        <div class="fact"><b>Bitwarden</b><span>Can't reset a master password or remove 2FA. Its recovery code still needs the master password.</span></div>
+        <div class="fact"><b>1Password</b><span>A new device needs the Secret Key. A recovery code doesn't turn two-factor off.</span></div>
+        <div class="fact"><b>Carriers</b><span>Sign-in codes go to the number itself, and eSIM moves usually need the old phone. The fallback is a store visit with ID or a call with the account PIN.</span></div>
+        <div class="fact"><b>Discord</b><span>Support cannot remove 2FA. Without backup codes the account is gone.</span></div>
+      </div>
+    </section>
+
+    <section id="verification">
+      <p class="eyebrow">Verification</p>
+      <h2>Tested, then attacked</h2>
+      <ul class="plain">
+        <li><b class="num">54</b> automated tests cover the engine and its loops, every scenario, the heir view, fire-proof places, CSV import never keeping a password or 2FA secret, encryption and tampering, hostile input files, storage rules, and all <b class="num">630</b> quick-start answer combinations.</li>
+        <li>In a real browser: fresh install to results, applying and undoing fixes, persistence across reloads, encrypted save and open, the lock screen, phone-width layout, light and dark themes, the printed plan, and two tabs kept in sync. The network log showed only the page itself.</li>
+        <li>Opened from disk in Microsoft Edge: the app renders, and encryption and storage work.</li>
+        <li>An independent review by four agents, each with a different lens, with a separate skeptic trying to refute every finding. <b class="num">29</b> findings held up and all were fixed with regression tests. They included model accuracy (a Windows laptop counted as an Apple device), data safety ("Lock now" could drop an unsaved setup) and privacy (unencrypted storage readable by other local files).</li>
+      </ul>
+    </section>
+
+    <section id="limits">
+      <p class="eyebrow">Limits</p>
+      <h2>What the drill can't promise</h2>
+      <ul class="plain">
+        <li>Big providers score recovery on risk: a familiar device, location and account age matter. No model can promise an outcome, so every result shows the route it assumed.</li>
+        <li>Templates reflect help pages as of September 2026. Providers change these flows, and every assumption is editable.</li>
+        <li>The drill is only as good as the setup you describe. A forgotten signed-in laptop, or backup codes you never printed, change the answer.</li>
+      </ul>
+    </section>
+
+    <section id="sources">
+      <p class="eyebrow">Sources</p>
+      <h2>Check it yourself</h2>
+      <div class="sources">
+        <h3>Pain and demand</h3>
+        <ul>
+          <li><a href="https://news.ycombinator.com/item?id=49742976">HN: recover Google auth after phone stolen (2026)</a></li>
+          <li><a href="https://news.ycombinator.com/item?id=33963269">HN: if I get locked out of everything (2022)</a></li>
+          <li><a href="https://news.ycombinator.com/item?id=42581148">HN: Google login has circular dependency</a></li>
+          <li><a href="https://news.ycombinator.com/item?id=42855681">HN: Bitwarden new-device verification</a></li>
+          <li><a href="https://news.ycombinator.com/item?id=19778241">HN: personal service redundancy drills</a></li>
+          <li><a href="https://dev.to/adev3loper/your-recovery-path-is-your-real-login-575a">dev.to: Your recovery path is your real login</a></li>
+        </ul>
+        <h3>Research</h3>
+        <ul>
+          <li><a href="https://arxiv.org/html/2403.15080">ICISSP 2024: MFA and recovery settings</a></li>
+          <li><a href="https://people.inf.ethz.ch/basin/pubs/acm22.pdf">CHI 2022: I'm Surprised So Much Is Connected</a></li>
+          <li><a href="https://infsec.ethz.ch/research/software/account_access_graphs.html">ETH: Account Access Graphs</a></li>
+        </ul>
+        <h3>Provider help pages</h3>
+        <ul>
+          <li><a href="https://support.google.com/accounts/answer/185834">Google: can't sign in with 2-Step Verification</a></li>
+          <li><a href="https://support.apple.com/en-us/118574">Apple: Account Recovery</a></li>
+          <li><a href="https://bitwarden.com/help/lost-two-step-device/">Bitwarden: lost two-step device</a></li>
+          <li><a href="https://support.1password.com/secret-key/">1Password: Secret Key</a></li>
+          <li><a href="https://www.verizon.com/support/my-verizon-app-esim-faqs/">Verizon: eSIM moves</a></li>
+          <li><a href="https://support.discord.com/hc/en-us/articles/115001221072-Lost-Two-Factor-Codes">Discord: lost two-factor codes</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>Research run on 26 September 2026 with live web search. Condensed notes from every agent, and the full source, are at <a href="https://github.com/McMittens1/lockout-drill">github.com/McMittens1/lockout-drill</a>.</footer>
+  </main>
+</div>

@@ -1,0 +1,6 @@
+node_modules/
+_site/
+.DS_Store
+Thumbs.db
+# Raw research-agent output is large and contains local paths; the condensed notes are kept.
+research/*_raw.json

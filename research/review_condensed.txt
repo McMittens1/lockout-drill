@@ -1,0 +1,467 @@
+﻿total 29 real 29 refuted 0
+
+#0 [engine/high] Weak spots recomputes every verified fix on each render, cloning and recompiling the whole profile per candidate (7–11 s freeze)  (src/advice.js:258)
+  SCEN: weakView() calls bestFixes(p, pairs, 3) (weak.js:25) and verifiedFixes(S.profile, a.id, {lost: sets[0]}, 1) for every resilience-1 account (weak.js:104). Neither result is memoized; only analysis() is cached. For each candidate, verifiedFixes and bestFixes run clone(profile) + compile(p) + simulate (advice.js:263-267, 293-300). bestFixes also re-simulates every fragile pair and first runs candidateFixes (compile+simulate) once per pair. I measured this on a generated realistic profile (quick-start base plus template accounts) with 40 things / 150 accounts, 29 of them at resilience 1 because th
+  VERDICT: The defect is real, but the severity and the 7–11 s figure are overstated for the profile sizes this app can realistically reach.
+
+What the code does:
+- In store.js (lines 259–271), only analysis() goes through memo(). bestFixes and verifiedFixes are called straight from weakView: weak.js:25 calls bestFixes, and weak.js:104 runs verifiedFixes once for each account whose resilience is 1. Neither result is cached.
+- verifiedFixes (advice.js:258–269) runs clone+compile+simulate for every candidate. candidateFixes also runs its own compile and simulate each time it is called.
+- bestFixes (advice.js:283–305) calls candidateFixes once per pair. It then compiles each unique candidate once and simul
+  FIX: Cache the Weak spots fix results with the existing memo() in store.js, which is keyed by the cache that commit, undo and replaceProfile clear. Add something like `export const weakFixes = () => memo('weakFixes', () => { const an = analysis(); /* build pairs as weak.js does */ return { top: pairs.length ? bestFixes(S.profile, pairs, 3) : [], perRow: new Map(ones.map(f => [f.a.id, verifiedFixes(S.profile, f.a.id, { lost: f.sets[0] }, 1)])) }; })`. Have weakView and resilienceRow read from it instead of calling bestFixes and verifiedFixes directly. Menu, dialog and import-dialog rerenders then cost nothing extra; only real profile changes recompute.
+
+Optionally, cut the per-commit cost too:
+- I
+
+#1 [engine/medium] stuckLoop reports 'circular dependencies' through steps that are not blocking, with a false 'none of them can be the way back'  (src/engine.js:723)
+  SCEN: next() follows every alternative below OK in every applicable way, whether or not that step is what keeps the account down. Built-in sample profile, 'You can't remember passwords' preset: Bitwarden is LOCKED only because its master password is forgotten (both of its ways need it). Its mp2fa second step [Google Authenticator] would be satisfied at SLOW (GA restores from Google, which is SLOW). The row still gets a loop badge and says 'Circular dependency. Bitwarden → Google Authenticator → Google (Gmail) → Bitwarden. Each needs another to get in, so none of them can be the way back.' (drill.js:
+  VERDICT: I couldn't refute this one. I reproduced it by running the real engine on sampleProfile() with the built-in presets.
+
+**The code.** In src/engine.js:716-741, the `next()` function at line 723 pushes every alternative whose state is below OK in every applicable way. It never checks whether that alternative's step is actually failing: a step whose best alternative already meets the way's cap is still followed. It also doesn't lower the level it needs to reach based on way speed. That contradicts the function's own comment at line 714 ("shortest loop of *failing* requirements"). `runScenario` (line 752) attaches the result to every stuck row. drill.js:154 then shows the 'loop' badge, and drill.
+  FIX: In src/engine.js, rewrite stuckLoop to follow only steps that fail at the level the node needs, and pass that level down each edge:
+
+export function stuckLoop(graph, sim, id, target = OK) {
+  const st = r => sim.state.get(r) ?? LOCKED;
+  const next = (nid, t) => {
+    const n = graph.nodes.get(nid); const out = [];
+    for (const w of n?.ways || []) {
+      if (!wayApplies(n, w, sim.ctx)) continue;
+      const need = Math.min(t, SPEED_CAP[w.speed]);
+      for (const s of w.steps) {
+        const best = Math.max(LOCKED, ...s.anyOf.map(a => st(a.ref)));
+        if (best >= need) continue;               // this step is not what holds the node down
+        for (const a of s.anyOf) if (st(a.ref) 
+
+#2 [engine/medium] cycleTriggers burns a fresh 5,000-simulation budget per loop, so every loop that never breaks costs about 1–2 s  (src/engine.js:661)
+  SCEN: analyze() calls cycleTriggers, which calls minimalLockouts separately for every short loop (findCycles yields up to one loop per SCC member). That search ignores the singles, pairs and triples analyze() has just simulated. A loop that no ≤3 loss breaks (the common case, 'Nothing we tried breaks it') always uses the full budget of 5,000 simulateRaw calls. On a 40-thing / 150-account profile (maxSize 3 because candidates ≤ 40) with loops email↔authenticator and pm→auth→email, cycleTriggers alone took about 1–4 s. analyze took 2.3 s with 3 loops and 7–9.5 s once Gmail/Outlook/Yahoo/Proton recover
+  VERDICT: I could not refute this. The code does what the reviewer says, and my own timings back up the numbers.
+
+Code path:
+- analyze() (src/engine.js:608) calls cycleTriggers(graph, findCycles(graph), candidates, {maxSize: min(maxSize,3)}).
+- cycleTriggers (line 661) calls minimalLockouts once per loop, with a fresh budget of 5000 each time.
+- minimalLockouts (lines 472-493) runs simulateRaw from scratch for every size-1, size-2 and size-3 combination until it finds a trigger or reaches evaluated > budget (5001 runs). Nothing from analyze's own single/pair/triple runs (lines 546-595) reaches it. Only the prepared graph index (graph._fast) is shared.
+- A loop with no trigger of size 3 or less never s
+  FIX: In analyze(), work out the loops before the enumeration and fold the trigger search into the loops analyze already runs, sharing its budget:
+
+1. Before the singles loop:
+   - `const loops = findCycles(graph).map(c => ({ c, idx: c.members.filter(id => !id.endsWith(USE)).map(id => fast.index.get(id)).filter(i => i !== undefined), trig: [] }));`
+   - If `loops.some(L => L.idx.every(i => baseline st[i] <= threshold))`, set `trig = [[]]` for those loops, as minimalLockouts does now.
+2. Extend `consider(combo, st)`: for each loop with `trig.length < 2`, if every index in `L.idx` has `st[i] <= threshold` and `!L.trig.length || L.trig[0].length === combo.length`, push the combo. analyze goes through
+
+#3 [engine/medium] Nested places ignore heirCan=false: a locked safe inside the home is always reachable in the heir drill  (src/engine.js:78)
+  SCEN: Only top-level places consult heirCan (engine.js:85-88). A nested place gets an unconditional 'in' way from its parent, and its fireproof base only fires when the parent is lost. The Setup UI shows '<trusted> can get in' for every place, nested ones included (setup.js:184). Setup: Home (top level), 'Locked safe' inside Home with 'Sam can get in' unchecked, recovery kit kept in the safe, account needs the kit. The 'You're gone' drill returns safe = OK and account = OK (verified). The heir drill therefore says Sam can reach material the user explicitly marked as out of his reach, and verifiedFix
+  VERDICT: I reproduced it, and the defect is real. In src/engine.js, lines 76-89 are the only code that builds place nodes. A top-level place checks heirCan in its base (line 86). A nested place gets an unconditional 'in' way from its parent (line 78), marked direct and with no 'who' field. wayApplies (lines 159-170) only turns a way off in the heir view when way.who === 'me', so this way still works for the heir. Nothing else in compile or run looks at heirCan for a nested place.
+
+The UI shows the "<trusted> can get in" checkbox for every place, nested or not (setup.js:184). normalize keeps heirCan:false for any thing (store.js:164), so the user's choice is saved and then ignored.
+
+Reproduction with 
+  FIX: In compile(), engine.js line 78, mark the nested place's 'in' way as unavailable to the heir when heirCan is false. The existing check in wayApplies at line 167 then turns it off, and disabledReason reports 'only-you':
+
+  node.ways.push({ id: 'in', label: `Inside ${things.get(parent).name}`, speed: 'instant', direct: true, who: t.heirCan === false ? 'me' : 'both', steps: [step('Location', [parent], 'place')] });
+
+So that rootCauses/affectedBase reports the safe as 'out of reach' in the heir drill, give every nested place a base, and keep the fireproof logic that already exists:
+
+  node.base = ctx => (t.fireproof && ctx.lost.has(parent) && !ctx.lost.has(t.id)) ? (ctx.perspective === 'heir' &&
+
+#4 [engine/medium] Fireproof safe survives a fire only if its direct parent is lost, so the built-in fire drill destroys a safe inside a room of the home  (src/engine.js:82)
+  SCEN: The base checks ctx.lost.has(parent) for the immediate parent only. Home > Office (inside Home) > 'Fireproof safe' (inside Office, fireproof) holding the backup codes. The 'Your home burns down' preset loses only top-level homes ({home}). The Office is then LOCKED through its 'in' way, the safe's base returns LOCKED because the Office is not in lost, and the safe and every account using its codes show LOCKED (verified). Losing more, {home, office}, makes the safe SLOW again, so the result is not monotone in the lost set. The analysis also reports {Home} as a minimal lockout for accounts the sa
+  VERDICT: I could not refute this; it is a real defect. In src/engine.js:82, the fireproof base only checks the place's direct parent: `ctx.lost.has(parent)`. Nothing expands the lost set to include child places. drill.js, store.js and advice.js all pass the lost list through unchanged.
+
+The failure case can be built in the app. setup.js:34-45 (placeOptions) lets a place sit inside another place that is itself inside one, and only blocks cycles. setup.js:183 shows the Fireproof checkbox for any place that has `inside`. store.js:226 keeps the chain and only breaks cycles. The fire preset at engine.js:409/423 loses only top-level homes (`home && !inside`).
+
+I reproduced it with the real engine. Setup: H
+  FIX: In compile() in engine.js, when a place has a parent, collect its ancestors with a cycle guard:
+
+const anc = []; let cur = parent; const seen = new Set([t.id]);
+while (cur && things.has(cur) && !seen.has(cur)) { anc.push(cur); seen.add(cur); cur = things.get(cur).inside; }
+
+Then:
+- Replace the base with `ctx => (anc.some(a => ctx.lost.has(a)) && !ctx.lost.has(t.id) ? (ctx.perspective === 'heir' && t.heirCan === false ? LOCKED : SLOW) : LOCKED)`.
+- Store `node.ancestors = anc`.
+- In affectedBase (line 377), use `node.ancestors?.some(a => ctx.lost.has(a))` instead of `ctx.lost.has(node.src.inside)`.
+- Make the same change in reasonFor (line 395).
+
+Add a test: Home > Office > fireproof Safe hol
+
+#5 [engine/medium] Quick start makes an Android phone (and any laptop) a trusted Apple device that can reset the iCloud password  (src/quickstart.js:82)
+  SCEN: For email = 'apple', the fills use every device: pwcode: [ep, [...devices, 'num']] and devreset: [devices]. The Apple-account block does the same with the computer (line 92), with no check that it is a Mac. Answers: iCloud Mail, Android phone, no computer, Bitwarden. iCloud Mail gets devreset = [Android phone/trusted_device]. In a drill where the Bitwarden master password is forgotten ({lost:['mp']}), iCloud shows OK 'via Reset the password on a signed-in Apple device (Android phone)' (verified). An Android phone cannot receive Apple codes or reset an Apple Account, so the real outcome is Acco
+  VERDICT: I couldn't refute this. The claim holds for the Android phone. The part about the computer is weaker.
+
+Code: src/quickstart.js:16 always sets `devices = ['phone', ...]`, whatever phone was picked. The iCloud Mail fill at line 82 is `apple: { pwcode: [ep, [...devices, 'num']], devreset: [devices], recovery: [] }`, with no platform check. The quick start form lets you pick 'Android phone' and 'iCloud Mail' together (src/app.js:117, 131). Nothing downstream filters the choice out: accountFrom (src/sample.js:9-24) runs inferVia, and trusted_device accepts any phone, tablet or computer (templates.js:63). The code contradicts itself. The separate Apple-account block at line 92 already leaves the p
+  FIX: In src/quickstart.js, build an Apple-device list once, before the email fills. Use it at line 82 and at line 92:
+
+  const appleDevices = [...(a.phone === 'iPhone' ? ['phone'] : []), ...(a.computer === 'yes' ? ['computer'] : [])];
+
+Line 82:
+  apple: { pwcode: [ep, [...appleDevices, 'num']], ...(appleDevices.length ? { devreset: [appleDevices] } : {}), recovery: [] },
+
+Line 92: reuse the same appleDevices instead of defining it again.
+
+This alone fixes the Android case. For the laptop, either add a quick start question asking whether it is a Mac and include 'computer' only on yes, or leave it as the existing guess the user corrects in Setup. Also add a test: answers {phone:'Android phone', ema
+
+#6 [engine/medium] Verified fix 'Also set up <authenticator> on <computer>' proposes installs that the app cannot do  (src/advice.js:174)
+  SCEN: Fix #4 offers every phone, tablet or computer not already listed, whatever the app, and verification only checks the graph. Quick start (Android, Aegis or Google Authenticator, Bitwarden, Proton, laptop), then add GitHub (password from Bitwarden, TOTP from the app). The 'Your phone is stolen' drill shows GitHub LOCKED, and the verified fixes are 'Also set up Aegis on Laptop → Fine' and 'Also set up Google Authenticator on Laptop → Fine' (verified). The research notes say Aegis is Android-only, Authy's desktop apps ended in 2024 (AUTHAPP_PRESETS says so too), and Google Authenticator and 2FAS a
+  VERDICT: I could not refute this claim. I reproduced it by running the real modules in node.
+
+Code path: `src/advice.js:171-179` (fix #4) builds `others` from every thing whose kind is phone, tablet or computer and that is not already in `t.devices`. It never checks which app it is. The only filter after that is `verifiedFixes` (lines 258-278), which re-simulates the graph. In the engine, any usable device listed under `authapp.devices` makes the codes available, so the fix always "verifies". `AUTHAPP_PRESETS` (`src/templates.js:477-485`) has no platform field. Nothing else in `advice.js`, `drill.js` or `weak.js` filters these fixes. `drill.js:202-211` shows each one under "Fixes that would work in t
+  FIX: In `src/templates.js`, add a supported-device field to each `AUTHAPP_PRESETS` entry:
+- Google Authenticator, Microsoft Authenticator, Authy, 2FAS: `devices: ['phone','tablet']`
+- Aegis: `devices: ['phone','tablet']` plus `os: 'android'`
+- Ente Auth: `devices: ['phone','tablet','computer']`
+- Apple Passwords: `devices: ['phone','tablet','computer']` plus `os: 'apple'`
+
+In `src/advice.js` fix #4 (around line 171), filter `others` by `(preset?.devices || ['phone','tablet']).includes(d.kind)`. When the preset has an `os`, also skip devices whose name clearly belongs to another platform, for example `/iphone|ipad|mac/i` for an Android-only app. Unknown apps fall back to phones and tablets only.
+
+
+
+#7 [engine/low] Recovery-code fix never verifies for GitHub, Bitwarden, 1Password and Apple, because it leaves the recovery way's other steps empty  (src/advice.js:29)
+  SCEN: addToWay enables the first way with a backup_codes/recovery_key step and fills only that step. For GitHub it picks 'rcodes' ([Password], [Recovery code]). For Bitwarden it picks 'rcode' ([Master password], [Recovery code]). For 1Password it picks 'rcode' ([Recovery code], [Email]), and for Apple 'rkey' ([Recovery key], [Trusted number]). Those ways are off by default, so the other step has no alternatives, the way stays LOCKED, and verifiedFixes drops the candidate. Sample profile without GA backup, {lost:['yubikey','iphone']}: GitHub is LOCKED, the candidate 'Print GitHub backup codes and kee
+  VERDICT: I reproduced this defect by running the code.
+
+How it happens:
+- `accountFromTemplate` (src/templates.js:512-535) creates every step with `anyOf: []`. Only ways marked `on` start enabled.
+- `autofill` (src/setup.js:231) skips disabled ways (`if (w.enabled === false) continue`). `sample.js` `accountFrom` fills only the ways it lists. So a way that is off by default, such as GitHub `rcodes` ([Password], [Recovery code]), Bitwarden `rcode` ([Master password], [Recovery code]), 1Password `rcode` ([Recovery code], [Email]) or Apple `rkey` ([Recovery key], [Trusted number]), has an empty non-code step.
+- `candidateFixes` part 1 calls `addToWay` (src/advice.js:29-36). `findWay` returns that recover
+  FIX: In src/advice.js, make `addToWay` fill the way's other empty steps before returning, and fail if it cannot. After `w.enabled = true` and pushing the new ref into the target step:
+
+```js
+for (const st of w.steps) {
+  if (st === s || st.anyOf.length) continue;
+  // 1) Reuse alternatives the account already uses for the same step types in its other ways
+  //    (e.g. GitHub's pw2fa Password, Apple's pwcode sms/voice number).
+  for (const ow of account.ways) {
+    if (ow === w) continue;
+    for (const os of ow.steps || []) for (const alt of os.anyOf || []) {
+      if (st.types.includes(alt.via) && !st.anyOf.some(x => x.ref === alt.ref)) st.anyOf.push({ ...alt });
+    }
+  }
+  // 2) Otherwise fal
+
+#8 [ui/high] 'Look at the sample setup' cannot be undone, and autosave then overwrites the user's stored setup  (src/app.js:239)
+  SCEN: The confirm text says 'You can undo right after', and the toast shows an Undo button. But onYes calls loadSample(), and loadSample (line 92) calls replaceProfile(sampleProfile(), { keepHistory: false }), so the user's profile is never pushed onto S.history. schedulePersist then writes the sample to localStorage 350 ms later, encrypted with the user's keyring if one is set. Case 1: the user reloads the page, opens the menu, picks 'Look at the sample setup', confirms, then clicks Undo in the toast. S.history is empty, undo() returns false and nothing happens. The real setup is gone from memory a
+  VERDICT: I could not refute this claim. The code does what the reviewer says.
+
+- **The replace skips history.** In src/app.js:91-97, loadSample() calls `replaceProfile(sampleProfile(), { keepHistory: false })`. In src/store.js:65-72, replaceProfile() pushes the current profile onto S.history only when keepHistory is true, so the user's profile is never saved there. It then calls schedulePersist(), which runs persistNow() after 350 ms (store.js:87-107). That writes the sample to localStorage, encrypted with S.keyring when one is set, and it overwrites the user's stored setup under STORE_KEY.
+- **The menu item promises an undo.** src/app.js:239 is shown only when a real, non-sample profile is loaded (`
+  FIX: In src/app.js:92, change `replaceProfile(sampleProfile(), { keepHistory: false });` to `replaceProfile(sampleProfile(), { keepHistory: !!S.profile });`. From the welcome screen, S.profile is null, so nothing is pushed and that path behaves as before. From the menu, the user's current profile is pushed first. The toast's Undo, Ctrl+Z and the menu's "Undo last change" then restore exactly the user's setup, and undo() calls schedulePersist(), which writes it back to localStorage.
+
+#9 [ui/high] 'Lock now' throws away the only copy of the setup when saving to browser storage failed  (src/app.js:256)
+  SCEN: Setup: browser storage is blocked (site data or cookies blocked, a case the app itself expects: 'Not saved: browser storage is blocked'). The user picks 'Protect with a passphrase': the keyring is set in memory, persistNow fails, and the toast still says 'Encrypted'. They then pick Lock now. persistNow() swallows the error, lockNow still clears S.profile, S.keyring and S.history, and sets S.pendingEnvelope = readStored(), which is null. On the lock screen, the correct passphrase gives 'Not an encrypted Lockout Drill file.' The in-memory setup is unrecoverable; the only option left is 'Erase'. 
+  VERDICT: I traced the claim through the code and it holds. I could not refute it.
+
+1. **Storage is blocked from the start.** When `localStorage` access throws, `readStored()` (store.js:109-118) catches the error and returns null. `boot()` (app.js:476-478) then shows the welcome screen. The user builds a setup through quickstart or the sample, and `replaceProfile` → `schedulePersist` → `persistNow` fails inside its try/catch (store.js:97-105). That sets `S.saveState = 'error'`, and the status bar reads "Not saved: browser storage is blocked" (app.js:52). So the app expects this state, and the in-memory `S.profile` is the only copy.
+
+2. **The passphrase toast is wrong.** In `passphraseDialog` (app.js:3
+  FIX: In store.js, make persistNow report success. Return false when there is no profile, true after setItem succeeds, and false in the catch branch.
+
+In app.js lockNow, check that result before clearing anything:
+```js
+async function lockNow() {
+  const ok = await persistNow();
+  const stored = ok ? readStored() : null;
+  if (!ok || !isEncrypted(stored)) {
+    toast("Can't lock: this browser didn't save your encrypted setup. Use Save to file first; locking now would lose it.", { ms: 9000 });
+    return;
+  }
+  S.profile = null; S.keyring = null; S.history = [];
+  S.pendingEnvelope = stored; S.screen = 'lock';
+  rerender();
+}
+```
+Import `isEncrypted` from crypto.js into app.js; it is already export
+
+#10 [ui/medium] normalize() drops the `custom` flag, so ways the user added become impossible to delete or rename after any reload  (src/store.js:189)
+  SCEN: In the account dialog, the user clicks 'Add another way in' (setup.js:288 creates the way with custom: true), renames it and adds a step. After a page reload, Lock now + unlock, or Save + Open file, the profile passes through normalize(). The way object is rebuilt without `custom`. wayEditor (setup.js:331, 337, 342) now shows the label as plain text and hides both the trash button and 'Add a step'. The user-created way can no longer be removed, renamed or extended, only switched off.
+  VERDICT: I could not refute this. It is a real defect. The way object that normalize() builds (src/store.js:189-204) whitelists id, key, label, kind, speed, inPerson, who, note, enabled and steps. It never copies `custom`. The only place that sets `custom: true` is addWay (src/setup.js:288), and wayEditor reads nothing but `w.custom` to decide whether to show the label input, the trash button and 'Add a step' (setup.js:331, 337, 342). Nothing derives the flag another way, for example from a missing template `key`.
+
+normalize runs on every load path:
+- Startup restore from localStorage: app.js:481, unwrap -> normalize.
+- Lock-screen unlock: app.js:171.
+- File open, plain: app.js:289, unwrap.
+- File op
+  FIX: In src/store.js normalize(), keep the flag on each way: add `...(w.custom === true ? { custom: true } : {})` to the object pushed at line 189. Another option is to set `x.ways[x.ways.length-1].custom = true` when w.custom === true.
+
+#11 [ui/medium] The Undo toast stays up after later edits, then undoes a different change than the one it names  (src/store.js:49)
+  SCEN: commit() only touches the toast when undoLabel is given, and renderChrome re-renders the existing S.toast with its Undo button (app.js:45). Example: in Setup, the user removes 'Printed backup codes'. The toast reads 'Removed Printed backup codes (was used by Google) · Undo' and lasts 9 s. Within that time they star an account (a commit with no undoLabel). They then click Undo in the toast. undo() pops the star toggle, the toast says 'Undone', and the backup codes stay deleted, even though the toast named the removal. The same happens with 'Deleted <account>' and 'Opened a setup… · Undo'.
+  VERDICT: I could not refute this one. It is a real defect.
+
+1. `commit()` at src/store.js:41-51 always pushes onto `S.history`. It only calls `toast()` when `undoLabel` is set (line 49). When `undoLabel` is null it leaves `S.toast` alone, `undo` flag included.
+2. `rerender()` calls `renderChrome()` (src/app.js:32). `renderChrome()` (app.js:40-46) rebuilds `#toast` from `S.toast` and shows the Undo button whenever `S.toast.undo` is true. That button calls the generic `undo()`, which just pops the last entry from `S.history` (store.js:53-63). The button is not tied to the change the toast names.
+3. The Undo toast stays up for 9 s (store.js:75), and several ordinary edits commit without `undoLabel`:
+   
+  FIX: Record the history depth when the toast is shown, and only offer Undo while that depth has not changed. This also covers silent commits and replaceProfile.
+
+- store.js toast(): `S.toast = { text, undo, depth: S.history.length };`
+- app.js renderChrome(): render the button only when `S.toast.undo && S.history.length === S.toast.depth`.
+
+A simpler alternative: in commit(), when `undoLabel` is null and `S.toast?.undo` is true, set `S.toast = { ...S.toast, undo: false }` (or `S.toast = null`) before `rerender()`.
+
+#12 [ui/medium] No cross-tab coordination: a second tab overwrites storage, removes passphrase encryption and brings back erased data  (src/store.js:98)
+  SCEN: persistNow always writes this tab's whole S.profile, using this tab's S.keyring. Nothing listens for the 'storage' event. Setup: the app is open in tabs A and B (for example, the .html file was double-clicked twice). In A, the user sets a passphrase, so storage is encrypted. In B, where S.keyring is null, any edit writes {encrypted:false, profile} over the envelope. The setup now sits in plaintext while tab A still shows 'Saved in this browser, encrypted', and the next reload skips the lock screen. Likewise, after 'Erase everything' in A, any edit in B puts the erased setup back into storage. 
+  VERDICT: I could not refute this claim. The code confirms it.
+
+- src/store.js:94-99: persistNow() writes only this tab's state. It uses S.keyring ? encryptWith(S.keyring, S.profile) : {encrypted:false, profile:S.profile}, then calls localStorage.setItem(STORE_KEY, ...). It never reads what is already stored first.
+- A grep of the whole project for 'storage' events, BroadcastChannel and navigator.locks finds nothing. The only listeners in src/app.js are keydown, click, the dialog's close/click, file-input change and beforeprint (app.js:281, 451, 462, 472-473, 491).
+- boot() (app.js:469-489) reads storage once. After that, the in-memory S.profile and S.keyring are never refreshed from storage.
+
+Encrypt
+  FIX: In boot() (src/app.js), add a window 'storage' listener that runs when e.key === STORE_KEY || e.key === null, and handle three cases:
+
+1. The key was removed (e.newValue === null). Mark this tab stale: set S.profile = null, S.keyring = null and S.screen = 'welcome' (or show a 'changed in another tab, reload' notice), and clear persistTimer.
+2. The new value is an encrypted envelope and either this tab has no keyring, or the envelope's kdf.salt differs from S.keyring.salt. Discard in-memory state: set S.pendingEnvelope = parsed, S.profile = null, S.keyring = null and S.screen = 'lock', then rerender.
+3. Anything else. Mark the tab stale and offer a reload, or adopt the new profile through unw
+
+#13 [ui/medium] Editing a text field and then clicking a button loses the click, because the change-triggered re-render replaces the button  (src/app.js:30)
+  SCEN: Text inputs commit on 'change', which fires on blur during the mousedown on the next control. Examples: account name setup.js:293, thing name setup.js:131, owner/trusted setup.js:55-57, custom way label setup.js:331. commit() calls rerender(), which rebuilds all of #app and all dialog content (dlg.replaceChildren). By mouseup, the button the user pressed is a detached node, so its click handler never runs. Reproduction: open an account, type a new name, click 'Done'. The name is saved but the dialog stays open. The same happens with 'Remove' next to a thing name you just edited, or with a view
+  VERDICT: I tried to refute this and couldn't. The code path is as claimed, and I reproduced the failure in a real browser.
+
+Code path:
+- In ui.js:19, h() attaches `onchange` as a plain 'change' listener. Nothing debounces it.
+- The text inputs at setup.js:55, 57, 131, 293 and 331 call commit() or edit() from 'change'. commit() (store.js:41-51) calls rerender() synchronously unless `silent` is set, and none of these callers set it.
+- rerender() calls render() (app.js:28-38). render() runs `$('#app').replaceChildren(screen())` at app.js:30, then renderDialog(), which runs `dlg.replaceChildren(content)` at app.js:324. Together these replace every node in the view and the dialog.
+- A text input fires 'ch
+  FIX: Don't rebuild the DOM synchronously while a pointer press is in progress. The smallest fix is to make rerender() coalesce and defer: in store.js, `let pending=false; export function rerender(){ if(pending) return; pending=true; queueMicrotask(()=>{pending=false; renderFn();}); }`. A microtask alone still runs before mouseup, though. So also track presses in app.js: set `pointerDown=true` in a capturing 'pointerdown' listener on document, and clear it in 'pointerup'/'pointercancel'. While a press is active, commit only the state for text-field change handlers and render on the next pointerup, after the click has been dispatched (for example with a setTimeout(0) in the pointerup handler). Alte
+
+#14 [ui/medium] Unlock still finishes if the user erases during the passphrase check, so the erased setup reopens  (src/app.js:169)
+  SCEN: The PBKDF2 check behind decryptEnvelope (600k rounds) takes about 0.3–3 s. During that time, 'Forgot the passphrase?' stays clickable. If the user confirms 'Erase and start over' (line 191: clearStored, keyring=null, screen=welcome) before the check finishes, the pending submit then sets S.keyring and S.profile and switches to the app screen. The explicitly erased setup is shown again, and the next edit writes it back to storage. If unlock finishes first, the erase confirm stays open over the app. Clicking Erase then clears storage and the keyring but leaves S.profile set, so going Welcome → Q
+  VERDICT: I couldn't refute this. The race is real and nothing else in the code handles it.
+
+1. src/app.js:159-182. `submit` awaits `decryptEnvelope`. That runs `crypto.subtle.deriveKey` with 600k PBKDF2 rounds (crypto.js:58-70, makeKeyring). WebCrypto runs this off the main thread, so the page keeps responding. Only the submit button is disabled (line 167).
+2. The 'Forgot the passphrase?' button (line 191) is `type=button` and is never disabled. Clicking it calls `openDialog`, which sets `S.dialog` and calls `rerender()`. `render()` (lines 28-38) rebuilds `#app` and calls `showModal` on the confirm dialog. The `onYes` closure from the lock screen is kept in `S.dialog`.
+3. After the await, nothing che
+  FIX: In `lockScreen` (src/app.js:169), check after the await that the lock session is still current: `if (S.screen !== 'lock' || S.pendingEnvelope !== env) return;` (on either success or failure). Disable the 'Forgot the passphrase?' button while `busy`, the same way the submit button is disabled. Make the lock-screen erase `onYes` (line 191) clear the same state as `eraseAll`: `clearStored(); S.pendingEnvelope = null; S.keyring = null; S.profile = null; S.history = []; S.dialog = null; S.screen = 'welcome'; rerender();`. Even better, have it call `eraseAll()` after setting `S.pendingEnvelope = null`.
+
+#15 [ui/low] Ctrl/Cmd+Shift+Z (redo) is treated as undo and silently reverts a second change  (src/app.js:455)
+  SCEN: The handler checks `mod && e.key.toLowerCase() === 'z'` and never looks at e.shiftKey. On macOS, Cmd+Shift+Z is the standard redo (Ctrl+Shift+Z on many Linux and Windows apps). A user who undoes a change with Cmd+Z and presses Cmd+Shift+Z to redo it gets a second undo instead: another earlier edit is reverted, and there is no redo to get it back.
+  VERDICT: I couldn't refute this claim. The code does what the reviewer says.
+
+In src/app.js:453-455 the document keydown handler sets `mod = e.ctrlKey || e.metaKey` and then runs `if (mod && e.key.toLowerCase() === 'z' && !typing(e) && !S.dialog) { e.preventDefault(); undo(); return; }`. It never checks e.shiftKey. With Shift held, e.key is 'Z', and toLowerCase() turns it into 'z', so Ctrl+Shift+Z and Cmd+Shift+Z both reach undo(). A grep of src/ turns up no redo handling anywhere, and nothing handles Ctrl+Y.
+
+undo() in src/store.js:53-63 pops S.history, replaces S.profile and persists the result. There is no redo stack, so the popped state is gone. The toast it shows ('Undone') has no undo button. T
+  FIX: In src/app.js:455, stop the handler from matching Shift+Z by changing the condition to `if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z' && !typing(e) && !S.dialog) { e.preventDefault(); undo(); return; }`. Ctrl+Shift+Z / Cmd+Shift+Z then falls through to line 456, which returns without doing anything because `mod` is true. Optionally, add a real redo stack in store.js: undo() pushes the current S.profile JSON onto S.future, commit() clears S.future, and a redo() is bound to mod+Shift+Z and Ctrl+Y.
+
+#16 [security/medium] Default plaintext localStorage is readable by any other local HTML file (shared file:// origin)  (src/store.js:98)
+  SCEN: The app is built to be opened from disk (dist/lockout-drill.html, and scripts/file-probe.html exists only to check file:// behaviour). Unless the user sets a passphrase, persistNow writes the whole profile as plaintext JSON to localStorage['lockout-drill:v1'] (store.js:98-99). The profile includes where backup codes and security keys are kept, the phone number and carrier, the trusted person, and every account with its recovery routes. Chromium-based browsers give all file:// documents one shared storage origin. So any other local HTML file the user opens in the same browser, such as a downloa
+  VERDICT: I could not refute this. I checked the code and ran a test, and both confirm the defect.
+
+Code path:
+- src/store.js:98-99 (persistNow): when S.keyring is null, which is the default until the user opts into a passphrase, it writes `{app:'lockout-drill', encrypted:false, v:1, profile}` as plaintext JSON to localStorage['lockout-drill:v1'].
+- Autosave runs on every commit, undo and replaceProfile through schedulePersist.
+- Double-clicking dist/lockout-drill.html (file://) is the documented main way to use the app. README step 1 says "Double-clicking the file works", and RESEARCH.md:103 confirms localStorage works under file:// in Chromium.
+
+Empirical check on this machine: I ran headless Edge (
+  FIX: Change store.js and the related UI text as follows:
+
+1) In store.js persistNow, stop writing plaintext to localStorage by default under file://. Suggested code:
+
+```
+const onFile = location.protocol === 'file:';
+if (!S.keyring && onFile && !readPrefs().plainLocalOk) {
+  S.saveState = 'unsaved-plain';
+  refreshChrome();
+  return;
+}
+```
+
+Then show a persistent banner or chip such as "Not saved in this browser: set a passphrase (recommended) or allow unencrypted browser storage". Setting a passphrase, or an explicit opt-in (writePrefs({plainLocalOk:true}) after a confirm dialog), then allows autosave. The confirm dialog should say that on file:// any other HTML file opened from disk in the same
+
+#17 [security/medium] Opening an encrypted file silently replaces the user's own passphrase and KDF strength (down to 1,000 iterations); Undo re-saves the user's setup under it  (src/app.js:304)
+  SCEN: decryptEnvelope accepts any kdf.iterations from 1,000 up (crypto.js:61) and returns a keyring holding the file's salt and iteration count. adoptProfile then sets S.keyring to that keyring (app.js:304, called from app.js:359). From then on every autosave (store.js:98) and every Save to file (app.js:272) is encrypted with the file's passphrase, salt and iteration count. Verified: after decrypting an envelope made with 1,000 iterations, encryptWith(keyring) emits kdf.iterations = 1000 with the same salt. Concrete case: the user's own setup is protected with a private passphrase A. A partner sends
+  VERDICT: I could not refute the core of this claim. Most of the scenario holds, but the "1,000 rounds" part only happens with a hand-crafted file.
+
+Code path, all checked:
+- passphraseDialog, file mode (app.js:358-359), calls decryptEnvelope(d.envelope, pass). decryptEnvelope (crypto.js:60-62) accepts any iteration count from 1,000 to 10,000,000. It returns a keyring built from the file's salt and iteration count.
+- adoptProfile (app.js:301-310) calls replaceProfile(profile, { keepHistory: hadProfile }). That pushes only JSON.stringify(S.profile) onto S.history (store.js:66). Then app.js:304 sets S.keyring to the file's keyring, and the toast offers Undo (app.js:307).
+- undo() (store.js:53-63) pops t
+  FIX: In src/app.js adoptProfile, do not let a file's keyring silently replace an existing one, and never keep a key weaker than KDF_ITERATIONS. Pass the passphrase through from passphraseDialog. If S.keyring is already set, keep it, so the imported profile is re-encrypted under the user's own passphrase. Otherwise, if keyring.iterations < KDF_ITERATIONS, derive a fresh key with await makeKeyring(pass), which uses a new salt and 600,000 rounds. Otherwise adopt the file's keyring.
+
+If replacing the passphrase on open is intended, save the old keyring when adopting (for example, push { profile: JSON, keyring: prevKeyring } or keep a parallel S.keyringHistory). Then have undo() in src/store.js restor
+
+#18 [security/medium] Persist failures are swallowed: 'Protect' reports 'Encrypted' and 'Lock now' drops the in-memory setup even when the encrypted write failed  (src/app.js:257)
+  SCEN: persistNow catches every error and only sets S.saveState = 'error' (store.js:102-105). It has two callers. (1) The set-passphrase flow awaits persistNow and then always shows 'Encrypted. You will need this passphrase to open your setup.' (app.js:372-373). If setItem throws, for example QuotaExceeded because the base64 ciphertext is about 1.33x larger (up to about 4x for non-ASCII names) and Chrome's file:// quota is shared with every other local page, the previous plaintext payload stays in localStorage while the user is told it is encrypted. (2) lockNow (app.js:256-266) never checks whether t
+  VERDICT: I could not refute this. I read the code and ran the failure paths in Node against the real src/store.js and src/crypto.js, with localStorage stubbed out.
+
+1. persistNow (store.js:94-107) catches every error. It only sets S.saveState='error' and S.storageOk=false. It returns undefined whether or not the write worked, so no caller can tell that it failed.
+
+2. lockNow (app.js:256-266) ignores the result of the save. It always sets S.profile, S.keyring and S.history to null, and sets S.pendingEnvelope from readStored(). The "Lock now" menu item only checks S.keyring (app.js:232). Nothing checks storage health first.
+   - Storage blocked: the stub throws SecurityError. The app expects this mode,
+  FIX: 1. store.js persistNow should return a boolean: `if (!S.profile) return false;`, then `return true` after a successful setItem, and `return false` in the catch. The catch should also remove a stale unencrypted copy once a passphrase is set, so plaintext is not left behind: `if (S.keyring) { try { const old = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (old && !isEncrypted(old)) localStorage.removeItem(STORE_KEY); } catch {} }`. Optionally, retry the setItem once after that removal, because freeing the plaintext may bring the write under quota.
+
+2. app.js lockNow should become `async function lockNow() { const ok = await persistNow(); const stored = readStored(); if (!ok || !isE
+
+#19 [security/low] Lock now and Erase everything leave the full recovery plan in the DOM (#print) and in the memo cache  (src/app.js:256)
+  SCEN: buildPlan fills #print with the owner, the trusted person, which items are kept at which place, every scenario's locked-out accounts and the fastest route into each important account (app.js:404-441). It runs on 'Print a recovery plan' and also on any Ctrl+P while unlocked (beforeprint, app.js:491). Nothing clears it afterwards: there is no afterprint handler. lockNow (app.js:256-266) and eraseAll (app.js:246-254) null S.profile, S.keyring and S.history but never clear #print. They also never clear the module-level memo cache in store.js:262, which keeps the compiled graph, presets and analysi
+  VERDICT: I couldn't refute this one. The defect is real, and low severity is the right rating.
+
+**What fills `#print`**
+- `buildPlan` (src/app.js:404-441) writes the plaintext plan into `<div id="print">`: the owner, the trusted person, which physical items are kept at which place, locked-out, appeal-only and slow accounts for every scenario, fastest routes for important accounts, and single points of failure.
+- It runs from `printPlan` (the menu at app.js:235 and the Weak spots button at weak.js:91). It also runs from the `beforeprint` listener at app.js:491 whenever `S.screen === 'app'`.
+- The only other code that empties `#print` is the `else` branch of that same `beforeprint` listener, and `build
+  FIX: 1. In store.js, add `export function clearCache() { cache.clear(); }` and import it in app.js.
+2. In both `lockNow` (inside the `.then`, next to `S.profile = null`) and `eraseAll`, add:
+   `$('#print').replaceChildren(); clearCache();`
+3. In `boot()`, add an `afterprint` listener so the plan never outlives the print:
+   `window.addEventListener('afterprint', () => $('#print').replaceChildren());`
+4. For consistency, also call `$('#print').replaceChildren()` in the lock screen's "Forgot the passphrase?" erase callback (app.js:191).
+
+#20 [security/low] normalize() whitelists use plain-object lookups, so inherited keys like 'constructor' pass validation and crash the account editor  (src/store.js:201)
+  SCEN: THING_KINDS, VIA, SPEEDS, WAY_KINDS and ACCOUNT_CATEGORIES are ordinary objects, and normalize checks them with truthy lookups: THING_KINDS[t.kind] (line 159), ACCOUNT_CATEGORIES[a.category] (177), WAY_KINDS[w.kind] and SPEEDS[w.speed] (193-194), VIA[t] and VIA[o.via] (201-202). A crafted or shared file with kind, speed, category or step types of 'constructor', 'toString' or '__proto__' is kept as valid (verified in node). The value is persisted and re-accepted on every boot. For step types ['constructor'], opening that account's editor calls accepts('constructor', c) (setup.js:365 -> template
+  VERDICT: I confirmed the defect by reading the code and running it in node, though part of the claimed impact is overstated.
+
+1. The whitelists are plain object literals: THING_KINDS, ACCOUNT_CATEGORIES, VIA, SPEEDS and WAY_KINDS in src/templates.js at lines 5, 30, 50, 73 and 79. normalize() in src/store.js checks them with truthy lookups at lines 159, 177, 193, 194, 201 and 202. No other check guards them, and normalize is the only validation for opened files (app.js openFile, then unwrap at store.js:134-135, then normalize) and for stored data (app.js:171, 359).
+
+2. I ran normalize on accounts:[{category:'constructor', ways:[{kind:'toString', speed:'__proto__', steps:[{types:['constructor'], anyOf:
+  FIX: In normalize() (src/store.js), use own-property checks for every whitelist. For example, add const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k); and use:
+- line 159: !has(THING_KINDS, t.kind)
+- line 177: has(ACCOUNT_CATEGORIES, a.category) ? a.category : 'other'
+- line 193: has(WAY_KINDS, w.kind) ? w.kind : 'signin'
+- line 194: has(SPEEDS, w.speed) ? w.speed : 'instant'
+- line 201: .filter(t => has(VIA, t))
+- line 202: has(VIA, o.via) ? o.via : 'any'
+
+For defense in depth, also:
+- In accepts() (templates.js:489), use Object.hasOwn(VIA, type) ? VIA[type] : null.
+- In setup.js, look up NEW_FOR with Object.hasOwn(NEW_FOR, ref / t).
+- In engine.js, use Object.hasOwn(SPEED_CAP, w.
+
+#21 [accuracy/high] Quick start assumes any home computer is an Apple trusted device, so Apple Account stays OK after the phone is stolen  (src/quickstart.js:92)
+  SCEN: Quick start with the default answers (iPhone, computer 'yes' named 'Laptop', email Gmail, Bitwarden). The quick start never asks whether the computer is a Mac, but line 92 still puts it into Apple's pwcode 'Code on a trusted device' step and its devreset step (line 82 does the same when the email is iCloud). I ran the default profile through the engine with lost=['phone']: Apple Account = OK through devreset 'Reset the password on a signed-in Apple device' with picks computer~use. The research only allows this on Apple hardware: research/services_condensed.txt:20 ('On any still-signed-in iPhon
+  VERDICT: The claim holds. I could not refute it.
+
+1. **The quick start never asks what kind of computer it is.** The form in src/app.js lines 119-121 only asks "A computer at home that stays signed in?" (Yes/No) and a name. Nothing in quickstart.js, store.js or the templates tracks the computer's operating system. My grep for macOS, Windows and os in src/ found nothing relevant.
+
+2. **Line 92 adds the computer to Apple no matter what it is.** When a.computer === 'yes', the computer goes into Apple's pwcode second step and its devreset step. accountFrom (src/sample.js:9-24) gives it the trusted_device type there.
+
+3. **I reproduced the scenario.** I ran the default answers (QS_DEFAULT) through buildFr
+  FIX: In src/quickstart.js, only count Apple hardware as an Apple trusted device.
+
+1. Add a quick start answer for the computer type, e.g. `computerMac: 'no'` in QS_DEFAULT. Add a Mac / Windows / other radio next to the computer question in src/app.js at line 119.
+2. Compute `const appleDevs = [...(a.phone === 'iPhone' ? ['phone'] : []), ...(a.computer === 'yes' && a.computerMac === 'yes' ? ['computer'] : [])];`
+3. Line 82: use `pwcode: [ep, [...appleDevs, 'num']]`. Add `devreset: [appleDevs]` only if appleDevs.length, and use `session: [devices]` if you want signed-in sessions kept.
+4. Line 92: use appleDevs in place of the current appleDevices expression.
+
+If you don't add the question, default 
+
+#22 [accuracy/high] 'Other email' recovery gets into a 2FA account with one SMS code; the Fastmail research says two factors are required  (src/templates.js:248)
+  SCEN: The template's rinfo way is 'instant' with a single step ['sms','email_code']. The quick start turns it on next to pw2fa for email='Other' (quickstart.js:85 rinfo: [['num']]). I ran the quick start with email='email' through the 'You can't remember passwords' preset (every secret lost). Result: Bitwarden LOCKED, Email OK, and the 30 'sites that reset by email' OK, because the SIM hardware still takes texts. When only the master password is lost, Email is also OK. The research says: research/services_condensed.txt:151 ('With 2FA on, a phone number alone is not enough; a second factor such as th
+  VERDICT: I reproduced the main scenario. Part of the claim does not hold.
+
+**What happens.** I ran buildFromAnswers({...QS_DEFAULT, email:'email'}) from src/quickstart.js, then E.simulate from src/engine.js. The Email account comes out with three ways on:
+- pw2fa, with the password from Bitwarden ('pm') plus a second step of auth app or 'num'
+- session
+- rinfo, whose only step is 'Code to' filled with 'num' (quickstart.js:85)
+
+rinfo is defined at src/templates.js:248 as one 'instant' step of sms or email_code. The quick start always turns pw2fa on for 'Other', so this account always has 2FA.
+
+**The "can't remember passwords" preset.** This preset is engine.js:429, with lost = pin, comppw, mp. Results
+  FIX: In src/templates.js, 'email' template (around line 248): keep rinfo as the 2FA-off path and label it that way, e.g. 'Recovery by phone or another email (2FA off)'. Add a 2FA-on variant that needs a second, separate factor:
+
+W('rinfo2fa', 'Recovery tool with 2FA on (two factors)', 'recovery', 'instant', [['Code to', ['sms', 'email_code']], ['Second factor', ['password', 'totp', 'security_key']]]),
+
+Optionally set its speed to 'slow' when the reset runs on an unrecognized device (the 24-hour wait at research line 153). The research says your usual device avoids that wait, so 'instant' is also defensible.
+
+In src/quickstart.js:85, pw2fa is always on for 'Other', so fill the 2FA-on variant in pl
+
+#23 [accuracy/high] 1Password recovery code way skips two-factor, but research says 2FA stays on  (src/templates.js:178)
+  SCEN: The rcode way is Recovery code + Email, with no two-factor step. Test profile: 1Password with pwkey2fa (password, Secret Key paper, Google Authenticator on the phone) and rcode (paper code + an email account), phone lost. The engine reports op = OK. Research: research/services_condensed.txt:251 ('2FA STAYS ON, so it does not help with a lost authenticator') and :256 ('The recovery code does not turn off 2FA'). The template's own tip at line 170 says the same. With the authenticator gone and no signed-in device, 1Password should be locked (or reachable only through organizer recovery). The dril
+  VERDICT: I could not refute this claim. I reproduced it.
+
+**Why nothing else prevents it**
+- In src/templates.js:178, the 1Password `rcode` way has two steps: Recovery code (`backup_codes`) and Email (`email_code`). It has no two-factor step.
+- The template models "2FA on" versus "2FA off" only as separate ways: `pwkey` at line 175 and `pwkey2fa` at line 176. Nothing links `rcode` to whether 2FA is on.
+- The engine (src/engine.js `compile`, `wayValue`) scores each enabled way on its own. It has no rule that would add a 2FA requirement to recovery ways.
+- The Setup view offers `rcode` as a way the user can turn on. Its label, "Recovery code (needs your email)", says nothing about 2FA.
+
+**What the sour
+  FIX: In src/templates.js, split the 1Password `rcode` way the same way the sign-in ways are split into `pwkey` and `pwkey2fa`:
+- Relabel the current way as W('rcode', 'Recovery code (two-factor off, needs your email)', ...) with the same steps.
+- Add W('rcode2fa', 'Recovery code + two-factor (two-factor on)', 'recovery', 'instant', [['Recovery code', ['backup_codes']], ['Email', ['email_code']], ['Two-factor', ['totp', 'security_key']]]).
+
+Two caveats:
+- Saved profiles store their own copies of each way's steps, so accounts created before this change keep the old two-step `rcode`. Either migrate onepassword accounts that have `pwkey2fa` turned on in normalize, or show a note for them.
+- In advice
+
+#24 [accuracy/high] Login.gov personal key is treated as a substitute for MFA, giving instant access after all MFA is lost  (src/templates.js:443)
+  SCEN: The 'rkey' way is Password + Code, where Code accepts 'recovery_key' as well as 'backup_codes'. Test profile: Login.gov with pwmfa (password + Google Authenticator on the phone) and rkey filled with a paper personal key, phone lost. The engine reports gov = OK (via recovery_key). Research: research/services_condensed.txt:476 (the personal key only 'restores access to your verified identity data' after a password reset), :477 ('MFA is still required'), :478 and :482 (losing every MFA method means deleting the account, waiting 24 hours and starting over). The right result is SLOW, through the 'r
+  VERDICT: I could not refute this one. I confirmed it by reading the code and running the engine.
+
+**What the code does**
+- `src/templates.js:437-445`: Login.gov and ID.me share one template, `gov`.
+- Line 443 defines the way `rkey`, labeled 'Recovery code or personal key', with speed 'instant'. Its steps are Password and then Code, where Code accepts `['recovery_key', 'backup_codes']`. "Personal key" is Login.gov's name for its key, so the label tells Login.gov users to enter it here.
+- The engine treats this like any other way. `wayApplies` in `engine.js:159-170` only filters on lost, abroad and who. `wayValue` takes the minimum over steps, capped by speed, so instant means OK.
+
+**The advice path ma
+  FIX: The cleanest fix is to split `src/templates.js:437-445` into two templates.
+
+**Login.gov** (`id: 'logingov'`, domains `['login.gov']`)
+- `supports`: `['backup_codes', 'security_key', 'totp', 'passkey']`. Do not include `recovery_key`, so `advice.js` never suggests printing a personal key as an MFA fix.
+- Ways:
+  - `pwmfa` as it is now. It already includes `backup_codes`.
+  - `redo`: slow, photo_id + email_code, ME, on.
+  - Drop the `rkey` way, or keep it only with `note: 'The personal key restores verified identity data after a password reset; it does not replace MFA.'` and no `recovery_key` alternative in any way that yields access.
+
+**ID.me** (`id: 'idme'`, domains `['id.me']`)
+- `supports
+
+#25 [accuracy/high] Quick start treats Apple Passwords (iCloud Keychain) as available whenever the Apple Account is, ignoring keychain end-to-end encryption  (src/quickstart.js:69)
+  SCEN: With pm='apple', pwFor() returns ['apple'] for every account's password (lines 34 and 69). VIA.password accepts 'acct:platform' (templates.js:51), so every password becomes as reachable as the Apple Account node. Quick start pm='apple', computer='no', email Gmail, with only the iPhone passcode forgotten (lost=['pin']): the engine reports every account OK, because Apple is reached with the memorized password plus SMS to the SIM. Research: research/services_condensed.txt:297-298 (a new device joins the keychain only when another keychain device approves it or the old device passcode is entered),
+  VERDICT: I could not refute this. I read the code and ran the scenario through the real modules (buildFromAnswers, then compile and simulate).
+
+How the password gets routed to the Apple Account:
+- In src/quickstart.js:34, pm='apple' with a non-Apple email sets platformPm='apple'.
+- pwFor() (quickstart.js:67-74) then returns ['apple'] for every account except the Apple Account itself. The Apple Account gets a memorized secret, pw_apple.
+- VIA.password accepts 'acct:platform' (templates.js:51), so each account's "Password" step is satisfied by the Apple Account node.
+- There is no keychain node and no Apple Passwords account template. The only mention is the AUTHAPP_PRESETS hint at templates.js:484. No
+  FIX: Make the keychain its own password_manager node so it is no longer the same thing as the Apple Account.
+
+1. In templates.js, add a template with id 'applepw', name 'Apple Passwords (iCloud Keychain)' and category 'password_manager'. Give it these ways:
+   - `W('unlocked', 'Open on an Apple device already in Keychain', 'signin', 'instant', [['Unlocked Keychain device', ['session']]], { on: true })`
+   - `W('escrow', 'Keychain recovery on a new device', 'recovery', 'instant', [['Apple Account', ['account']], ['Passcode of a previous device', ['pin']], ['Text to trusted number', ['sms']]], { on: true, note: '10 tries only. Account Recovery alone does not restore it.' })`
+   - Optionally `rconta
+
+#26 [accuracy/medium] Always-on recovery ways with no steps ignore settings that disable them (Apple Account Recovery with a recovery key or security keys; Microsoft recovery form with 2SV on)  (src/templates.js:123)
+  SCEN: Apple 'recovery' is on by default with steps [], so the engine rates it SLOW for 'me' in every scenario. Test: Apple with pwcode using key1 and key2, rkey filled (paper key at the office + number), and recovery left on. With the phone, key1, home (key2) and office (recovery key) all lost, apple = SLOW. The research says permanent lockout: research/services_condensed.txt:23 (a recovery key 'replaces standard account recovery'), :27, :28 (losing all trusted devices and security keys could lock you out permanently) and :306. The note at line 123 says this only in words. The same pattern appears i
+  VERDICT: I could not refute this. I reproduced it by running the engine in Node.
+
+How the code behaves:
+- templates.js:123: Apple 'recovery' is a slow way with `steps: []` and `on: true`.
+- templates.js:143: Microsoft 'appeal' is an appeal way with `steps: []` and `on: true`.
+- In engine.js `run`/`wayValue`, a way with no steps is worth its speed cap: SLOW for Apple, APPEAL for Microsoft.
+- `wayApplies` (engine.js:159-169) only removes a way for lost accounts, abroad/in-person, or perspective. Nothing checks whether the account has a recovery key or security keys.
+- compile() (engine.js:122-138) copies every enabled way unchanged. store.js normalize has no rule that makes ways exclude each other eith
+  FIX: - **Apple, a guard the engine checks:** add a field to Apple 'recovery' in templates.js, for example `unlessWay: ['rkey']` and `unlessVia: ['security_key']`. Copy it through store.js normalize and compile(). In compile() (engine.js ~122), skip the way when:
+  - a sibling way named in `unlessWay` is enabled and has any filled step, or
+  - any enabled sign-in way has a step with an anyOf entry whose via is 'security_key'.
+- **Apple, the advice fix:** in advice.js fix #1, when `type === 'recovery_key'` and `a.template === 'apple'`, also set the 'recovery' way's `enabled = false`. The verified re-run then scores the real trade-off.
+- **Microsoft:** remove `on: true` from 'appeal' at templates.js
+
+#27 [accuracy/medium] Coinbase trusted-contact recovery is satisfied by any one person, but Coinbase requires 2 to 5 contacts and a majority approval  (src/templates.js:323)
+  SCEN: The 'contacts' way is one OR step ['recovery_contact'] plus the password. With a single trusted person filled in (the usual case, since the quick start has one trusted person), or with two contacts where one is lost, the engine reports Coinbase OK. Test: contacts=[sam, jo], lost=['phone','jo'] gives cb = OK. Research: research/services_condensed.txt:441 ('Trusted contacts (2 to 5 people; all or a majority must approve)'). With one contact configured, or one of two unavailable, this route does not exist, so the drill overstates access to a crypto account.
+  VERDICT: I could not refute the core claim. I checked it by reading the code and by running a script.
+
+1. The template gives one person too much power. In src/templates.js:323 the Coinbase 'contacts' way has two steps: 'Trusted contacts' (one step that any listed person satisfies) and 'Password'.
+   - wayValue and run() in src/engine.js:172-184 and 228-233 take the best of a step's alternatives.
+   - A person node's base is always OK (engine.js:107).
+   - So one available person plus the password makes the way worth its full 'instant' cap, which is OK (3).
+   - The research note (research/services_condensed.txt:441) says Coinbase needs 2 to 5 trusted contacts and all or a majority must approve. With 
+  FIX: In src/templates.js:323, model the approval as two AND steps instead of one OR step, and add a note:
+
+W('contacts', 'Trusted contacts approve recovery', 'recovery', 'instant', [['First trusted contact', ['recovery_contact']], ['Second trusted contact', ['recovery_contact']], ['Password', ['password']]], { note: 'Coinbase needs 2 to 5 trusted contacts; with 2, both must approve, otherwise a majority. Enter a different person in each step. Usable 24 hours after setup.' })
+
+This makes a 2-contact setup need both people, and a single listed person no longer counts as OK. With 3 to 5 contacts it approximates 'a majority' as 2 people, which is still optimistic for 4 or 5. Exact k-of-n would need a
+
+#28 [accuracy/medium] Registrar backup codes way lets you in with the codes alone, but the research places them at the 2FA prompt, after the password  (src/templates.js:432)
+  SCEN: 'bcodes' has a single step [Backup code]. Test profile: registrar with pw2fa (password + TOTP) and bcodes (paper), password forgotten (lost=['pw']): reg = OK. In the built-in 'You can't remember passwords' preset, where the registrar password lives in the now-locked password manager, the registrar still shows OK. Research: research/services_condensed.txt:661 (Namecheap backup codes are offered at the 2FA step, 'Want to use a Backup Code?' / 'I lost my device') and :619 (Cloudflare single-use 2FA backup codes). They replace the second factor, not the password. The only way around a lost passwor
+  VERDICT: I could not refute this one. It reproduces.
+
+Code: src/templates.js:432 defines the registrar recovery way as `W('bcodes', 'Backup codes', 'recovery', 'instant', [['Backup code', ['backup_codes']]])`. That is a single step with no password. The registrar's pw2fa second step (line 430) does not list backup_codes. So in this model, 'bcodes' is a way in that skips the password completely.
+
+Research: research/services_condensed.txt treats backup codes as a second factor for both services the template cites as sources (namecheap.com article 10073 and the Cloudflare account-recovery page).
+- Namecheap (:659-661): "1F: password | 2F: totp,security_key,backup_codes,email_code". The codes are offered
+  FIX: In src/templates.js:432, add the password as a step before the backup code, the same way GitHub, Bitwarden and Login.gov model it:
+
+W('bcodes', 'Password + backup code', 'recovery', 'instant', [['Password', ['password']], ['Backup code', ['backup_codes']]]),
+
+Optional: to model Namecheap's emailed password reset, the first step could be [['Password or email reset', ['password', 'email_code']]]. Leaving email_code out of the password step is the conservative choice. Also add a test in test/modules.test.mjs: with the registrar password lost, bcodes enabled and a paper assigned, the registrar should stay LOCKED, and verifiedFixes should not offer 'Print ... backup codes' as the fix.
+
+--- refuted:

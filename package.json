@@ -1,0 +1,12 @@
+{
+  "name": "lockout-drill",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulate losing your phone, home or memory and see which accounts you'd be locked out of. Offline, single-file.",
+  "scripts": {
+    "test": "node --test",
+    "build": "node build.mjs"
+  },
+  "license": "MIT"
+}

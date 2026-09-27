@@ -1,0 +1,681 @@
+## google — Google Account (Gmail) [platform]
+  1F: password,passkey_synced,passkey_device | 2F: push,passkey,security_key,totp,sms,voice,backup_codes
+  R backup_codes (instant): A set of 8-digit one-time backup codes, printed or downloaded ahead of time. Google's own advice if you lose your phone is to use one of these for the second step.
+  R trusted_device (instant): Other ways through 2SV: another phone still signed in (Google prompt), a computer where you ticked 'Don't ask again on this computer', or a passkey or security key registered on another device. On a new Android phone, 'sign in with phone number' also accepts a
+  R recovery_phone (instant): A code by SMS or voice to a 2SV backup number or recovery phone. Changes to recovery info can take up to 7 days to take effect for recovery. On 2SV accounts this alone may not be enough.
+  R recovery_email (instant): A verification code sent to the recovery email during account recovery. Not a guaranteed bypass of 2SV. Recovery works better from a familiar device and location.
+  R recovery_contact (instant): Up to 10 trusted people who have Google Accounts. You get a number that expires in 15 minutes, and the contact must pick the matching number on their device. You have to set this up in advance: the contact has up to 7 days to accept, then another 7 days pass b
+  R waiting_period (slow): Account recovery for 2SV accounts without backup options: Google says it 'can take 3-5 business days' to confirm it's you. Attempts are unlimited, and there is no phone support.
+  LEGACY: Inactive Account Manager: you choose an inactivity timeout, and up to 10 trusted contacts are notified and can get a download link for the data types you picked. It can optionally delete the account. Google may delete any account inactive for 2+ years. Without a plan, immediate family or representat
+  Q: Signing in with a passkey skips the 2SV second step, because the passkey already proves you have the device. Passkeys live in the platform's credential manager (iCloud Keychain on Apple devices; Google Password Manager on Android and Chrome) or on a FIDO2 secu
+  Q: If you lose your phone and have no backup codes, security key, or other signed-in device, 2SV recovery can take 3-5 business days, and a recovery email alone may not be accepted.
+  Q: Changes to recovery phone or email can take up to 7 days to count for recovery, so updating them after a loss doesn't help right away.
+  Q: Recovery contacts are new (2025) and must be set up before a lockout (up to 14 days to activate). They are not available for Advanced Protection Program, Google Workspace, or child accounts. One person can be a recovery contact for at most 25 accounts.
+  Q: You can't call Google for sign-in help. Recovery is automated and depends on answering questions from a familiar device, location, and browser.
+  Q: The 2SV page also lists scanning a QR code with your phone as a verification option.
+  Q: Unverified: Google has said it plans to move Gmail sign-in codes from SMS to QR codes. SMS and voice are still listed as 2SV methods as of this check.
+  SRC: https://support.google.com/accounts/answer/185839 https://support.google.com/accounts/answer/185834 https://support.google.com/accounts/answer/16590793
+## apple — Apple Account (Apple ID / iCloud) [platform]
+  1F: password,passkey_synced | 2F: trusted_device_code,sms,voice,security_key
+  R trusted_device (instant): On any still-signed-in iPhone, iPad, or Mac you can reset the Apple Account password from Settings with the device passcode. That makes the device passcode a de facto recovery credential. The Apple Support app on a borrowed Apple device can start a reset too.
+  R recovery_phone (instant): A 6-digit verification code by text or phone call to a trusted phone number. The number must still receive SMS or calls, so a lost SIM needs a carrier replacement first.
+  R recovery_contact (instant): Up to 5 recovery contacts, and both people need iOS 15/macOS 12 or later with iMessage on. During recovery the contact generates a recovery code on their device, and entering it lets you reset the password. Contacts get no access to your account.
+  R recovery_key (instant): An optional 28-character key. Once set, it replaces standard account recovery: you need the recovery key plus a code sent to your trusted phone number, and an Apple device. If you lose it, Apple can't provide it and you can be locked out permanently.
+  R waiting_period (slow): Account recovery when you can't reset the password and have no recovery key: an email within 72 hours gives the date and time you can regain access, often several days or more. Apple Support can't shorten it. The request is cancelled automatically if the accou
+  LEGACY: Legacy Contact: you can name multiple people, and any one of them can act. After your death they need the access key you generated (printed, PDF, or stored in their Apple Account if they accepted by iMessage) plus a death certificate. They can reach photos, messages, notes, files, and backups, but n
+  Q: Verification codes appear automatically on trusted devices (iPhone, iPad, Mac, Apple Watch, Vision Pro signed in with 2FA). You can also get them by SMS or voice call to a trusted number, and sometimes the trusted number is verified silently in the background 
+  Q: Setting up a recovery key disables standard account recovery. Losing the key and access to your trusted devices or number means permanent lockout.
+  Q: Security keys (at least 2 FIDO keys required) replace verification codes. Apple warns that losing all trusted devices and security keys could lock you out permanently.
+  Q: Advanced Data Protection: Apple doesn't hold the keys to end-to-end encrypted iCloud data. To recover it you need a device passcode, a recovery contact, or the recovery key, and one of the latter two must be set up before ADP can be turned on. ADP isn't availa
+  Q: 2FA can't be turned off on accounts created with it, and on others only within 2 weeks of enabling it.
+  Q: On iCloud.com you can use 'Sign in with Passkey' by scanning a QR code with an iPhone or iPad running iOS 17+ with iCloud Keychain on, so it depends on having your Apple device.
+  Q: Recovery contacts and Legacy Contacts are separate features, and each has to be set up in advance.
+  SRC: https://support.apple.com/en-us/118574 https://support.apple.com/en-us/109345 https://support.apple.com/en-us/102641
+## microsoft — Microsoft account (Outlook/Hotmail/Xbox) [platform]
+  1F: password,passkey_synced,passkey_device,email_link,sms_login | 2F: push,totp,email_code,sms,voice,passkey,security_key,recovery_key
+  R recovery_email (instant): A verification code to an alternate or verified email. Microsoft now pushes verified email plus passkey as the main recovery path.
+  R recovery_phone (instant): An SMS code to a registered phone, being phased out: Microsoft is removing SMS as an authentication and recovery method for personal accounts, and adding a new phone number may not be available.
+  R recovery_key (instant): A 25-character recovery code. Generating a new one invalidates the old one, and a lost code can't be retrieved or downloaded.
+  R support_form (slow): The account recovery form asks about past passwords, email contacts and subjects, Skype, Xbox console IDs, and purchases. Results go to a contact email within 24 hours, with up to 2 attempts per day. It can't help if two-step verification is on and you can't r
+  R waiting_period (slow): If you know the password but lost all security info, choose 'I don't have any of these' to replace it. The account then sits in a restricted state for 30 days, which Microsoft can't expedite, and alerts go to the old security info during that time.
+  LEGACY: No legacy contact or inactive-account feature for heirs. Microsoft releases a deceased user's data only in response to a valid subpoena or court order served on its registered agent, with no guarantee. Outlook.com and OneDrive are frozen after 1 year of inactivity and the account is deleted after 2 
+  Q: If 2SV is on and you've lost every alternate method and the recovery code, Microsoft says it cannot help. Support agents can't send reset links or change account details.
+  Q: Replacing all security info triggers a 30-day restricted state. During it you can't change the password, payment methods, aliases, or open the OneDrive vault.
+  Q: Since May 2025, new Microsoft accounts are passwordless by default (Authenticator, Windows Hello, security keys, passkeys, and one-time codes). A passwordless account can add a password back. Some legacy apps and protocols (IMAP/POP, Xbox 360, Office 2010) sti
+  Q: Passkeys can be saved to Windows Hello (device-bound), a phone, a FIDO2 security key, or a synced manager such as Microsoft Password Manager or Google/Apple.
+  Q: One-time email codes can serve as a passwordless first factor. They are codes, not magic links.
+  Q: Microsoft Authenticator cloud backup: on Android the backup is stored in your personal Microsoft account (circular if that account is the one locked), and on iOS it's in iCloud. Restore only works to the same platform, and passwordless MSA entries need a fresh
+  Q: SMS phase-out (announced in 2026, no firm date): users who rely on SMS should add a verified email and a passkey.
+  Q: Unverified: whether voice-call codes are still offered for personal accounts. Microsoft groups phone methods together in its SMS phase-out.
+  SRC: https://support.microsoft.com/en-us/account-billing/how-to-get-a-microsoft-account-recovery-code-2acc2f88-e37b-4b44-99d4-b4419f610013 https://support.microsoft.com/en-us/account-billing/what-does-security-info-change-is-still-pending-mean-cbd0f64f-02d9-45d2-90c3-2375e5a72e52 https://support.microsoft.com/en-us/accounts-billing/manage/microsoft-to-stop-sending-sms-codes-for-personal-accounts
+## amazon — Amazon [shopping]
+  1F: password,passkey_synced,sms_login,email_link | 2F: sms,voice,totp,push,email_code
+  R recovery_phone (instant): A registered 2SV backup method (a second phone number by SMS or voice, or an authenticator app). Amazon says to try the backup method or a trusted device before starting account recovery.
+  R trusted_device (instant): A browser or device previously marked as not needing codes can still sign in.
+  R recovery_email (instant): For accounts without 2SV, password reset or passwordless sign-in by one-time code to the registered email or mobile. The OTP can also be sent over WhatsApp.
+  R id_verification (slow): 'Didn't receive the code' > 'Two-Step Verification Account Recovery'. Amazon won't change 2SV settings until your identity is verified. Amazon Seller Central forum how-to posts say this means uploading a government ID photo and can take up to 48 hours (1-2 bus
+  R support_form (slow): If you can't get risk-based MFA challenges (email or phone code, Amazon app approval, security question), Amazon says to contact Customer Service to restore access.
+  LEGACY: No legacy contact. Bereavement support (bereavement-support-cs@amazon.com): with a death certificate plus the account's email or phone, Amazon can end subscriptions, stop recurring deliveries, and deactivate the account. Other access or changes need the death certificate, proof of being the estate's
+  Q: 2SV methods are text message, voice call, or authenticator app. Security keys are not listed for Amazon retail 2SV (unverified that they're unsupported).
+  Q: Even without 2SV, Amazon runs risk-based MFA on new browsers or devices: a code to email or phone, an approval prompt in the Amazon app, or a security question.
+  Q: Accounts can be passwordless, signing in with a one-time code to the mobile number or email, so losing that phone or email removes the only first factor.
+  Q: Passkeys are saved to your passkey provider (Apple, Google, etc.), one per provider, and each marketplace (amazon.co.uk, amazon.in) needs its own passkey or a password. Amazon may also ask for the passkey on high-risk payments.
+  Q: Unverified: whether a passkey sign-in skips the 2SV code prompt.
+  Q: Devices that can't show a code prompt use 'Alternate Sign-in' (append the 2SV code to the password), and such devices can't be saved as trusted.
+  SRC: https://www.amazon.com/gp/help/customer/display.html?nodeId=GU3SL3GTHLHPDQ2H https://www.amazon.com/gp/help/customer/display.html?nodeId=TPphmhSWBgcI9Ak87p https://www.amazon.com/gp/help/customer/display.html?nodeId=GAM5QWMWMTFCHEQT
+## facebook — Meta: Facebook [social]
+  1F: password,passkey_synced,passkey_device | 2F: security_key,totp,sms,backup_codes,push
+  R backup_codes (instant): 10 recovery login codes, generated in Security and Login settings, each usable once.
+  R trusted_device (instant): If you're still logged in on another browser, phone, or tablet, a notification there lets you approve the new login. Saved browsers also skip the code.
+  R recovery_email (instant): A password reset code or link to the account email if you can still receive it. Unverified whether this bypasses 2FA.
+  R recovery_phone (instant): A password reset SMS to the account phone if you can still receive it. Unverified whether this bypasses 2FA.
+  R id_verification (slow): 'Need another way to authenticate?' > 'Other options' > 'Get more help': upload a government ID photo, answer security questions, or submit a video selfie. Facebook usually sends instructions within 1-2 business days. A video selfie match can verify in about 1
+  R support_form (slow): 'I don't have my phone' > Contact us, or facebook.com/hacked from a previously used device. Manual and uncertain.
+  LEGACY: Legacy contact (you must be 18+ to choose one): after memorialization they can write a pinned post, change the profile and cover photo, request account removal, and download what you shared if you enabled that. They can't log in or read messages. You can instead choose to have the account permanentl
+  Q: The 2FA setup offers three methods: security key (U2F/FIDO2), authentication app, or SMS. Recovery codes and approval from a logged-in device are the backups.
+  Q: Meta passkeys work on Facebook, Messenger, Instagram, and Meta AI. They can be synced (iCloud Keychain or Google Password Manager) or device-bound, and on iPhone they require 2FA to be on.
+  Q: Video selfie recovery depends on having photos of your face on your Facebook or Instagram profile. Meta says it deletes the facial data after the comparison.
+  Q: Unverified: the help page still mentions confirming identity through 'trusted contacts', but Facebook's standalone Trusted Contacts feature is believed retired, so don't rely on it.
+  Q: Accounts Center is being renamed 'Meta Account', and 2FA and passkeys are managed there across Facebook and Instagram.
+  SRC: https://www.facebook.com/help/148233965247823 https://www.facebook.com/help/147926301947841 https://www.facebook.com/help/1568013990080948
+## instagram — Meta: Instagram [social]
+  1F: password,passkey_synced,passkey_device | 2F: totp,sms,backup_codes,push
+  R backup_codes (instant): Backup codes, visible only while logged in (Accounts Center > Password and security > Two-factor authentication). They must be saved before you lose access.
+  R trusted_device (instant): Devices marked trusted after a 2FA login skip codes. The help center also mentions reviewing login requests from other devices.
+  R recovery_email (instant): A password reset or login link to the account email. If you can't reach that email and never linked Instagram to Facebook, Instagram says it can't give you access.
+  R recovery_phone (instant): A reset link or code by SMS to the account phone.
+  R id_verification (slow): A video selfie (turning your head) or ID upload. The account is locked during review, an approval sends a password reset email, and declining to submit likely means no access.
+  R support_form (slow): Hacked or login help flows and the Meta AI support assistant. Manual and uncertain.
+  LEGACY: No legacy contact. Anyone can ask to memorialize a deceased person's profile with proof of death (for example an obituary link), and immediate family can request removal. Instagram never gives out login details for memorialized profiles, and they can't be changed.
+  Q: 2FA methods listed are an authentication app (recommended), text message, and WhatsApp codes. WhatsApp can only be turned on after SMS. Security keys aren't listed for Instagram (unverified).
+  Q: If you lose the registered email and the account isn't linked to Facebook, Instagram says it can't restore access.
+  Q: Backup codes can only be viewed while logged in.
+  Q: Meta passkeys (synced via iCloud Keychain or Google Password Manager, or device-bound) are supported on Instagram.
+  Q: Video selfie review compares against your profile photos, so accounts without face photos are harder to recover.
+  Q: Unverified: exact behavior of approving a login from another logged-in device ('push') on Instagram.
+  SRC: https://www.facebook.com/help/instagram/566810106808145 https://www.facebook.com/help/instagram/358911864194456 https://www.facebook.com/help/1053588012132894
+## whatsapp — WhatsApp [messaging]
+  1F: sms_login,passkey_synced,email_link | 2F: email_code,sms,passkey
+  R in_person (slow): The phone number is the account. If you lose the phone or SIM, you must get your carrier to block it and issue a replacement SIM with the same number, then re-register with the 6-digit SMS or voice code. If the carrier can't give back the number, the account c
+  R recovery_email (instant): The email added in settings or during 2SV setup can reset the 2SV PIN or password. It can also receive the registration code on a new phone, but only with an active SIM for that number in the device.
+  R trusted_device (instant): If you're still logged in on another device, you can update the account email there (Settings > Account > Email Address) before logging in on the new phone. The email can only be changed from inside WhatsApp.
+  R waiting_period (slow): Forgotten 2SV PIN with no email: wait 7 days, counted from the last time the account connected, then reset. Same if an attacker set a PIN. On a recycled number where the previous owner set 2SV, you wait 7 days after registering.
+  R other (slow): Chat history lives on the device. Restoring it needs a Google Drive/Google Account or iCloud backup, and end-to-end encrypted backups also need their password or 64-digit key.
+  LEGACY: No legacy or next-of-kin feature was found in the help center. Accounts are generally deleted after 365 days of inactivity. Messages stay on the device and in any Google or iCloud backup, so heirs would need the phone, the same number/SIM, and any backup password. Unverified: any formal WhatsApp pro
+  Q: Registration requires a 6-digit code by SMS or phone call to a number you own. VoIP and toll-free numbers aren't supported, and landlines work only on WhatsApp Business.
+  Q: Losing the SIM is effectively losing the account until the carrier reissues the same number, and carrier SIM replacement usually needs ID or carrier account access.
+  Q: The 2SV 6-digit PIN is being upgraded to a password (at least 8 characters with a letter and a number). 2SV can now use your phone number, a password, or an email for the extra check. The PIN/password is a knowledge factor that no second_factors value captures
+  Q: Passkeys (fingerprint, face, or screen lock) can replace the SMS code when registering or restoring. Unverified: whether passkeys sync through the platform provider and whether they remove the need for the SIM.
+  Q: WhatsApp can't deactivate a lost phone's account remotely. Re-registering on a new device logs the old one out automatically.
+  Q: Unverified (older policy, not confirmed on current pages): after 30 days locked out by 2SV, pending messages are deleted and re-registering creates a new account.
+  SRC: https://faq.whatsapp.com/1082491466048496/ https://faq.whatsapp.com/1007324800132703/ https://faq.whatsapp.com/1131652977717250/
+## proton — Proton (Proton Mail / Proton Account) [email]
+  1F: password | 2F: totp,security_key,backup_codes
+  R recovery_key (instant): 12-word recovery phrase. It resets the password and also decrypts existing data, so it is the only self-serve method that does both. Proton recommends setting it up.
+  R recovery_email (instant): A verification code sent to the recovery email lets you reset the password. Pre-existing encrypted data (mail, contacts, files, calendars, Pass passwords) stays locked unless you also have a data-recovery method or remember the old password. If you know the pa
+  R recovery_phone (instant): An SMS code to the recovery phone, with the same limits as recovery email: it resets the password but does not decrypt old data. It can also be used to get a 2FA recovery code when signed out.
+  R backup_codes (instant): One-time 2FA recovery codes are issued when 2FA is set up. Each code replaces the TOTP or security key for one sign-in.
+  R trusted_device (instant): QR-code sign-in: from a Proton app that is still signed in, use 'Sign in on another device' to move the session to a new device (a manual key entry is offered if there is no camera). It only works if the signed-in device has a screen lock. Once signed in, 'sig
+  R recovery_contact (slow): Contact-assisted data recovery: up to 5 trusted contacts can help restore encrypted DATA after a password reset. It does not give account access by itself; a separate password-reset method is still needed.
+  R other (instant): Device data backup (encrypted keychain kept in browser web storage) or a downloaded recovery file. Either one restores encrypted data after a password reset, but neither can reset the password.
+  R emergency_access (slow): Up to 5 emergency contacts, paid plans only. Both people need Proton Mail addresses. The owner picks a wait of 0, 1, 2, 3, 7, 14 or 30 days, and during it can approve or deny the request. With no response, the request is approved automatically and the contact 
+  LEGACY: Emergency Access (paid plans only): up to 5 trusted contacts with Proton Mail addresses can request full access to the account (Mail, Pass, Drive, VPN) after an owner-chosen wait of 0-30 days. The owner can deny during the wait; with no response it is approved automatically. Without this set up ther
+  Q: End-to-end encryption: a password reset via recovery email or SMS restores LOGIN but not DATA. Old mail, files, contacts and Pass vault stay unreadable unless you have the recovery phrase, recovery file, device data backup, contact-assisted recovery or the old
+  Q: Proton says it cannot access user passwords or encrypted data, so support cannot restore data.
+  Q: Resetting the password automatically reverts two-password mode to one-password mode.
+  Q: No SMS or voice 2FA. 2FA options are an authenticator app (TOTP) and U2F/FIDO2 security keys, and both can be enabled at once.
+  Q: No passkey sign-in for the Proton Account itself. A user request for passkey login (UserVoice, Aug 2024) had no official response when checked. Proton Pass stores passkeys for OTHER sites. Unverified whether this changed by 2026-09.
+  Q: QR-code sign-in only works if the still-signed-in device has a screen lock set up.
+  Q: Emergency Access is unavailable on free plans, and the contact must have a Proton Mail address.
+  Q: Unverified: Proton's inactivity-deletion policy for free accounts; not checked on an official page for this entry.
+  SRC: https://proton.me/support/set-account-recovery-methods https://proton.me/support/lost-two-factor-authentication-2fa https://proton.me/support/emergency-access
+## yahoo-mail — Yahoo Mail (Yahoo account) [email]
+  1F: password,passkey_device | 2F: sms,voice,totp,push,security_key,backup_codes
+  R recovery_phone (instant): Sign-in Helper sends a code to the recovery mobile number so you can reset the password or find your Yahoo ID.
+  R recovery_email (instant): Sign-in Helper sends a code to the alternate/recovery email. You can add or replace up to 10 emails, and recently removed ones count toward the limit.
+  R backup_codes (instant): Setting up a security key gives you a separate backup code. If the key is lost, use that code in Sign-in Helper, then remove the lost key.
+  R waiting_period (slow): An account locked after too many failed attempts unlocks automatically after 12 hours. Sign-in Helper is the faster route.
+  LEGACY: No survivorship: Yahoo accounts are non-transferable and Yahoo will not give out passwords or login details. The executor or personal representative can request closure, suspension of billing and, in certain circumstances, account content. This needs a request letter with the Yahoo ID, a document ap
+  Q: Yahoo help: if Sign-in Helper cannot be used because recovery info is wrong or inaccessible, 'you may not be able to regain access' to the account. There is no documented free human-review or ID-verification route.
+  Q: Authenticator-app 2SV requires at least 2 recovery methods (phone and/or email) on the account first.
+  Q: Yahoo Account Key (passwordless push approval in the Yahoo app) must be disabled before enabling 2SV. It can no longer be set up on all accounts; existing users can keep using it or turn it off.
+  Q: Push 2SV goes to any Yahoo app on your mobile devices, so losing the only phone removes both push and SMS.
+  Q: Passkeys: Yahoo help says a passkey 'is saved locally on the device where it's created' and may not be available to every account yet. It can be used cross-device via QR scan. In practice, platform passkey managers may sync it (unverified).
+  Q: Security keys must be FIDO U2F compatible and work in the latest Chrome, Edge, Firefox, Safari or Opera.
+  Q: Signing in to your Yahoo account alone does not count as mailbox activity for the 12-month inactivity rule; you must open Yahoo Mail.
+  Q: Unverified: whether Sign-in Helper with only recovery email/phone bypasses an authenticator-app or security-key 2SV when the backup code is lost.
+  SRC: https://help.yahoo.com/kb/SLN5013.html https://help.yahoo.com/kb/SLN2051.html https://help.yahoo.com/kb/-step-verification-security-key-sln35380.html
+## fastmail — Fastmail [email]
+  1F: password,passkey_synced | 2F: totp,security_key,sms,recovery_key
+  R recovery_key (instant): The Recovery Code is a single random code for the account (Settings > Privacy & Security > Account recovery). It is used in the account-recovery tool to reset the password and regain access after losing the 2FA device. Fastmail strongly recommends printing it.
+  R recovery_phone (instant): A code to the recovery phone via the recovery tool (app.fastmail.com/recover). A recovery phone is REQUIRED before 2FA can be enabled. With 2FA on, a phone number alone is not enough; a second factor such as the correct password is also required.
+  R recovery_email (instant): A code to the recovery email via the recovery tool. With 2FA on, recovery needs two separate factors.
+  R waiting_period (slow): A 24-hour wait applies to password resets made from devices, browsers or locations the account doesn't recognize. Using your usual device and browser avoids it. Older docs describe a 24-hour delay before a reset password takes effect, with notice sent to the a
+  R support_form (slow): If the recovery tool fails, support escalates the case to senior security team members for manual review. The outcome is not guaranteed.
+  LEGACY: No dedicated legacy-contact feature found. Fastmail suggests adding the email address of someone you trust, who could get access through powers given in your will, as a recovery email so they can recover the account if you are incapacitated or die.
+  Q: Fastmail: if all 2FA devices are lost and there is no recovery code, you 'may be permanently locked out.' It recommends at least two security keys or authenticator devices.
+  Q: SMS is only a BACKUP 2FA method, allowed only after an authenticator app or security key is enabled.
+  Q: A recovery phone must be added before 2FA can be turned on.
+  Q: Passkeys sign in without a password and skip 2FA entirely ('we do not prompt for 2FA when passkeys are used'). They are stored on your device or in a password manager, and the password keeps working.
+  Q: Hardware OTP devices (standalone TOTP tokens) are supported.
+  Q: App passwords for IMAP/CalDAV clients cannot be used to log in on the web or in the Fastmail app.
+  Q: Unverified: what happens to access and data when a paid Fastmail subscription lapses (grace period and deletion timing).
+  SRC: https://www.fastmail.help/hc/en-us/articles/360058752374-Using-two-step-verification-2FA https://www.fastmail.help/hc/en-us/articles/10351615144335-Passkeys https://www.fastmail.help/hc/en-us/articles/1500000279601-I-can-t-log-in
+## verizon — Verizon (US mobile carrier, My Verizon) [carrier]
+  1F: password,passkey_synced,sms_login | 2F: push,sms
+  R in_person (slow): Verizon stores do same-day SIM replacement; authorized retailers take up to 3 days. Pickup must be by the Account Owner or Account Manager with valid government-issued photo ID. Verizon says stores require photo ID before any account change, 'combined with a p
+  R trusted_device (instant): eSIM move via the My Verizon app (Account Owner or Manager, Wi-Fi, unlocked eSIM phone). Verizon: 'You need your old phone for authentication if there's only one line on your account'. With multiple lines, another device on the account can authenticate. A sing
+  R recovery_contact (instant): An Account Manager chosen by the Account Owner can do almost everything the owner can, including ordering or activating SIMs, moving eSIM and generating a Number Transfer PIN. They cannot change the Account PIN or assign managers.
+  R recovery_phone (instant): Password reset and sign-in use a Text or Push sent to your Verizon mobile number, and may ask for the billing ZIP. This is circular if the lost phone IS that number.
+  R support_form (slow): Call Customer Service. The 4-digit Account PIN (set by the Account Owner) verifies identity by phone or chat. SIM replacement can also be ordered in My Verizon for home delivery.
+  R waiting_period (instant): After SIM Protection is turned off there is a 15-minute delay before SIM changes, upgrades or BYOD activations can go through.
+  LEGACY: Estate executors and account members can transfer a deceased Account Owner's number to another Verizon account (transfer-service form) or disconnect it. Documentation such as a death certificate or executor papers may be requested. Requests are reviewed in about 3 business days. A device on payments
+  Q: SIM Protection, when on, blocks SIM swaps, device upgrades and BYOD transactions; there is a 15-minute delay after turning it off. It is toggled in the My Verizon app or website, so if the only device that can reach My Verizon is lost, you need another signed-
+  Q: Number Lock blocks port-outs to another carrier but NOT SIM or equipment changes. Turn it on or off in My Verizon, by app, or by calling *611. It must be off before a port.
+  Q: Number Transfer PIN (Account Owner or Manager only, via My Verizon, by dialing #PORT from the phone, by phone, or in store) expires after 7 days.
+  Q: Passkeys work on the My Verizon WEBSITE only, not yet in the My Verizon app. Verizon doesn't say whether they are synced or device-bound; platform passkeys usually sync.
+  Q: My Verizon two-factor authentication uses 'My Verizon app notifications, special links, or one time passcodes'. It applies each time the Account Owner signs in or contacts Customer Service.
+  Q: Unverified: My Verizon password-reset fallbacks (secret question, email) when the Verizon phone is unavailable.
+  Q: Only the Account Owner or Account Manager can order or activate SIMs and move eSIM. Account Members cannot.
+  SRC: https://www.verizon.com/support/keeping-your-account-safe-faqs/ https://www.verizon.com/support/my-verizon-app-esim-faqs/ https://www.verizon.com/about/account-security/sim-swapping
+## att-wireless — AT&T Wireless (myAT&T / AT&T ID) [carrier]
+  1F: password | 2F: sms
+  R recovery_phone (instant): Forgot password: a temporary password by text message. New-browser or new-device sign-in sends a one-time code to your AT&T wireless number, which is circular if that phone is lost.
+  R recovery_email (instant): Forgot password: a temporary password by email.
+  R support_form (slow): AT&T: 'If your device has been lost or stolen, you'll have to call us at 800.331.0500.' The account passcode verifies you by phone or in store. There is no online password-recovery option; call 800.288.2020.
+  R in_person (slow): Only the account owner or a Retail Authorized User (up to 10, age 18+) can activate a new SIM in a store. They must show valid government-issued photo ID (driver's license, passport or alien registration card with photo).
+  R recovery_contact (instant): People the owner gave secondary online access can manage the account online, including turning Wireless Account Lock on or off. Retail Authorized Users can act for the owner in stores.
+  R waiting_period (slow): AT&T advises that after a SIM or device change you may need to 'wait a couple of days' before sign-in verification codes work again.
+  LEGACY: Next of kin can transfer billing responsibility to another AT&T account or cancel. The account cannot stay in the deceased's name/SSN, except for Oklahoma billing addresses. The deceased's line has no early-termination fee; devices on installments must be returned to waive the balance. Without the p
+  Q: Wireless Account Lock (free, launched July 2025, postpaid consumer, toggled in the myAT&T/AT&T app) blocks SIM swaps, device purchases, billing changes and number transfers until unlocked. Only the owner or people with secondary access can toggle it. If the lo
+  Q: Turning the lock on or off emails the primary account holder and texts every active number on the account.
+  Q: eSIM transfer between devices needs Wireless Account Lock OFF, both devices on Wi-Fi, and a one-time PIN (delivery channel not stated). Prepaid eSIM switches require calling 800.901.9878.
+  Q: A new eSIM can be requested from the online wireless account ('Get a new eSIM' / 'Manage my SIM'), but that requires getting signed in first.
+  Q: The account passcode (4-8 digits) is used in stores and on calls. The optional 'extra security' passcode is required at online sign-in and is a static knowledge factor; forgetting it means signing in and choosing 'Get new passcode'.
+  Q: On computers you can also 'Sign in with the AT&T app' (QR scan or in-app notification), which depends on the phone.
+  Q: The AT&T ID password is shared with AT&T/Currently.com email; changing one changes both.
+  Q: Unverified: passkey or security-key sign-in for CONSUMER AT&T IDs. The passkey and hardware-token options found apply to AT&T's enterprise/employee login.
+  Q: Unverified: TOTP authenticator support for consumer myAT&T.
+  SRC: https://www.att.com/support/article/my-account/KM1011822/ https://about.att.com/story/2025/wireless-account-lock.html https://www.att.com/support/article/wireless/KM1113355/
+## t-mobile-us — T-Mobile US (T-Mobile ID / T-Life) [carrier]
+  1F: password | 2F: sms,totp,push
+  R recovery_phone (instant): Forgot Password offers verification by text message or one-time PIN to the T-Mobile number. The network can also silently confirm the number or SIM when you are on your own phone on T-Mobile's network, which is useless if the phone or SIM is lost.
+  R recovery_email (instant): A password-reset verification link is sent to the T-Mobile ID email address. You may also have to answer previously set security questions.
+  R other (instant): Security questions are an accepted 2-step and reset verification method. Google Authenticator (TOTP) is also accepted for reset verification.
+  R support_form (slow): 'Contact Us' if you can't finish reset steps or forgot security-question answers. Care verifies with the 6-15 digit account PIN/passcode set at activation.
+  R in_person (slow): T-Mobile stores can help with SIM Protection and SIM changes. Store ID requirements for SIM replacement are not stated on the pages read (unverified); T-Mobile pages do require government photo ID in store for sensitive changes such as date of birth.
+  R recovery_contact (instant): The Primary Account Holder can grant another line 'Authorized User' access. That person can manage the whole account (SIM changes, SIM Protection) online, in store and with care.
+  R waiting_period (slow): There is a 24-hour delay between changing 2-step verification settings and those settings taking effect. T-Mobile also allows only 5 login attempts in 24 hours.
+  LEGACY: Unverified (no official support page found): a deceased Primary Account Holder is reportedly handled by a deceased-customer team, with a death certificate needed to transfer or close. Cancelled accounts keep T-Mobile ID access only until final charges are paid.
+  Q: SIM Protection (free, postpaid only; Primary Account Holder or Authorized User) blocks SIM changes on chosen lines or the whole account. It is managed at My account > Profile > Privacy and Notification. It must be turned OFF before any SIM or eSIM change or yo
+  Q: Account Takeover Protection (free, per line) blocks port-outs. Postpaid: only the Billing Responsible Party can remove it, by contacting T-Mobile. Port Out Protection plus a Temporary Port-Out PIN is a separate path.
+  Q: SIM or eSIM changes are self-served in T-Life (Account > line > SIM transfer or activation) while on T-Mobile's network. They may require replying to an interactive SMS (iSMS), which can be a problem if the old phone is gone. Without the old device, use the 'O
+  Q: 2-step options: SMS to the T-Mobile number, security questions, fingerprint or Face ID approval in the T-Life app, and Google Authenticator. 'Always Required' forces a second step at every login.
+  Q: T-Life biometric sign-in is a local convenience that stands in for the password on that device. It is not a passkey.
+  Q: Unverified: passkey or FIDO security-key support for T-Mobile ID.
+  SRC: https://www.t-mobile.com/support/account/set-up-and-manage-your-t-mobile-id https://www.t-mobile.com/support/plans-features/sim-protection/ https://www.t-mobile.com/support/plans-features/account-takeover-protection/
+## generic-mobile-carrier — Generic mobile carrier (lost SIM / number replacement) [carrier]
+  1F: password,sms_login | 2F: sms,push
+  R in_person (slow): The most reliable path after losing the phone. Visit a carrier-owned store with government-issued photo ID; the account owner or an authorized user gets a new SIM or eSIM the same day (e.g., Verizon same-day, AT&T owner or Retail Authorized User with photo ID)
+  R trusted_device (instant): Self-serve eSIM transfer usually needs the OLD device, or approval from another line or device on the account (e.g., Verizon single-line accounts need the old phone). Not available when the only phone is lost.
+  R support_form (slow): Call customer care, verify with the account PIN/passcode, and have a SIM mailed or an eSIM issued. Delivery takes days, and a new-device sign-in code may be sent to the very number you lost.
+  R recovery_email (instant): Most carriers can reset the web-account password by email. The new-device sign-in code still usually goes to the wireless number.
+  R recovery_contact (instant): An account manager or authorized user (Verizon Account Manager, AT&T secondary access or Retail Authorized User, T-Mobile Authorized User) can order or activate SIMs and toggle SIM locks for you.
+  R waiting_period (slow): Anti-fraud delays: Verizon waits 15 minutes after SIM Protection is turned off; T-Mobile waits 24 hours for 2SV setting changes; AT&T says codes may not arrive for 'a couple of days' after a SIM change.
+  LEGACY: Carriers don't hand over account credentials. An executor or family member transfers the number to their own account (transfer of billing responsibility) or cancels, usually with a death certificate or executor papers, sometimes an obituary (AT&T). Keeping the deceased's phone number alive is what p
+  Q: Circular dependency: the carrier's own sign-in and reset codes usually go to the phone number you are trying to recover, so with the phone lost you typically need a store visit or a call.
+  Q: SIM-swap and port-out locks (Verizon SIM Protection/Number Lock, AT&T Wireless Account Lock, T-Mobile SIM Protection/Account Takeover Protection) must be turned OFF before a SIM change or port. They are often toggled only in the carrier app, so losing the only
+  Q: Only the account owner or designated managers can change SIMs. Family-plan members who are not managers cannot restore their own number.
+  Q: US FCC rules (Report and Order adopted Nov 15, 2023) require carriers to use secure authentication before a SIM change or port-out and to notify customers immediately. The compliance date was July 8, 2024 or after OMB approval, whichever is later, and the FCC 
+  Q: Unverified: prepaid lines without ID on file generally have fewer verification options and may be harder to recover.
+  SRC: https://www.fcc.gov/consumer-governmental-affairs/fcc-announces-effective-compliance-date-sim-swapping-item https://www.verizon.com/support/4g-sim-card-faqs/ https://www.att.com/support/article/wireless/KM1455633/
+## bitwarden — Bitwarden [password_manager]
+  1F: master_password,passkey_synced,passkey_device | 2F: totp,security_key,email_code,push,sms,voice
+  R recovery_key (instant): A two-step login recovery code is generated when any 2FA method is set up, and you have to save it yourself. You enter email + master password + code on the recovery page. This turns off ALL 2FA methods and logs you in. It does not help if you forgot the maste
+  R trusted_device (instant): 'Log in with device' lets an already signed-in Bitwarden app approve the new login. Any device still signed in can also export the vault. Bitwarden lists both as fallbacks when the 2FA device or master password is lost.
+  R recovery_email (instant): New-device login verification: accounts WITHOUT any 2FA get a one-time code at the account email when signing in on a new device (since Mar 2025; can be opted out). A master password hint can also be emailed. Neither method resets the master password.
+  R emergency_access (slow): Premium or paid org members only. A trusted contact gets View or Takeover access after a wait time the owner sets, unless the owner approves sooner. Takeover sets a new master password and removes all 2FA.
+  R other (slow): Business account recovery: if the user is enrolled, an org owner/admin can reset the master password or 2FA. A Duo admin can issue a bypass code.
+  R support_form (slow): Customer Success can be contacted about new-device verification email problems. Bitwarden states it CANNOT disable 2FA or recover the master password or vault. The last resort is deleting the account and starting over.
+  LEGACY: Emergency Access (Premium/Families/Teams/Enterprise): a trusted Bitwarden user asks for View or Takeover. Access is granted after an owner-set wait time unless the owner declines. It is not available if the org enables the Automatic Confirmation policy.
+  Q: Zero-knowledge: Bitwarden cannot reset the master password or disable 2FA. Losing the master password with no emergency access, admin recovery, known device or PRF passkey means deleting the account.
+  Q: New device verification emails a code on unrecognized devices only when no 2FA is on. If the email account's password is stored only in Bitwarden, you get a circular lockout.
+  Q: Passkey login skips two-step login. It unlocks the vault without the master password only with PRF-capable passkeys (Chromium browser extension and web app). Passkeys may be synced platform passkeys or hardware keys (up to 5).
+  Q: Free 2FA: authenticator app (TOTP), FIDO2 WebAuthn keys, email. Premium: Duo (push/SMS/call) and YubiKey OTP (not FIDO2).
+  Q: The 2FA recovery code must be saved ahead of time. Bitwarden support cannot regenerate it for a locked-out user.
+  Q: Emergency access Takeover removes the grantor's 2FA and replaces the master password. View access gives read-only access to the individual vault, including attachments.
+  SRC: https://bitwarden.com/help/lost-two-step-device/ https://bitwarden.com/help/new-device-verification/ https://bitwarden.com/help/emergency-access/
+## 1password — 1Password [password_manager]
+  1F: master_password,secret_key,passkey_device | 2F: totp,security_key,push
+  R trusted_device (instant): From any authorized device or browser you can turn off 2FA and read the Secret Key in account settings. Biometric unlock (Touch ID, Face ID, Windows Hello) keeps working on devices already set up, but only for a while ('will eventually expire').
+  R recovery_key (instant): Recovery code, for Individual and Families accounts only. You need access to the account email. It gives you a new Secret Key and a new account password. 2FA STAYS ON, so it does not help with a lost authenticator. It can be reused, and you should wait at leas
+  R recovery_contact (instant): A family organizer, team admin or owner, or a group with 'Recover Accounts' permission can start recovery. The user must open the email link, then gets a new Secret Key and password with all data kept. Their 2FA is reset. 1Password recommends at least two peop
+  R support_form (slow): Contacting 1Password Support is the last resort. The docs say 'you'll need to start over', and 1Password cannot recover the Secret Key or password.
+  LEGACY: There is no built-in emergency-access or legacy-contact feature (none found as of 2026-09). 1Password tells users to give a printed Emergency Kit (sign-in address, email, Secret Key, space to write the password) to a trusted person or keep it with a will. In Families, an organizer can recover a memb
+  Q: Signing in on a NEW device needs the account password AND the 34-character Secret Key. 1Password has no copy of the Secret Key. It can be found on a signed-in device, on 1Password.com in a browser used before, or in the Emergency Kit PDF.
+  Q: The recovery code does not turn off 2FA. For an Individual account that lost its authenticator and has no signed-in device, the docs only say 'ask someone to recover your account'. Unverified: whether support can reset 2FA for solo Individual accounts.
+  Q: No SMS or email 2FA. Only authenticator app (TOTP) and security keys, plus Duo push for Business accounts that use Duo.
+  Q: Recovery codes, organizer recovery and the Emergency Kit route all depend on access to the account email.
+  Q: Passkey unlock (beta): per 1Password it uses a unique per-device key, and new devices need a verification code from an already linked device. Treat it as device-bound and save a recovery code. Unverified: whether Individual accounts can use it generally.
+  SRC: https://support.1password.com/secret-key/ https://support.1password.com/recovery-codes/ https://support.1password.com/recovery/
+## lastpass — LastPass [password_manager]
+  1F: master_password,passkey_device | 2F: push,totp,sms,voice
+  R trusted_device (instant): Automatic recovery: after an email or SMS code, LastPass checks whether this device and browser were used to log in before, since a local recovery one-time password is stored there. The mobile app offers biometric account recovery only if you opted in on that 
+  R recovery_email (instant): The 6-digit code goes to the account email, or to a security email if set. It only verifies identity; a prior device/browser or another saved option is still needed. If you know your master password, most MFA can be turned off by an emailed link (lostkey), but
+  R recovery_phone (instant): If Text/SMS account recovery was set up, the recovery code goes by SMS instead of email. The LastPass Authenticator lock-out flow also offers 'Send me an SMS passcode' or 'Call me'. SMS is not available in some countries.
+  R recovery_key (instant): A one-time password generated earlier at lastpass.com/otp.php can reset the master password.
+  R backup_codes (instant): The LastPass Authenticator app can restore its MFA accounts from its cloud backup, if backup was turned on earlier.
+  R other (instant): A master password hint can be emailed. You can revert to the previous master password if it changed in the last 30 days. For Business/Teams, an admin may be able to reset the master password; the 'Prohibit account recovery' policy blocks self-service.
+  R emergency_access (slow): Premium/Families only. The contact must have a LastPass account. Access is granted after an owner-chosen wait period unless the owner declines it.
+  R support_form (slow): 'Request help logging in' opens a case, for example when the LastPass Authenticator device is lost and SMS was never set up. LastPass Support cannot reset or know the master password. The last resort is resetting the account to empty or creating a new one.
+  LEGACY: Emergency Access (Premium/Families): a trusted contact with their own LastPass account asks for access. It is granted after an owner-set wait period unless the owner declines, and the wait cannot be changed once a request is made.
+  Q: LastPass Support cannot reset the master password. Every self-service recovery path needs setup in advance or a device or browser that already logged in.
+  Q: The LastPass Authenticator app CANNOT be disabled by email. Only Google/Microsoft Authenticator, Duo, Yubico OTP, RSA, Symantec VIP and SecureAuth can be turned off by the emailed lost-device link, and that link needs the master password.
+  Q: Supported MFA: LastPass Authenticator (push/TOTP, with SMS or call backup), Google Authenticator, Microsoft Authenticator, Duo, Yubico OTP (not FIDO2), RSA SecurID, Symantec VIP, SecureAuth. Availability depends on account type.
+  Q: Passwordless vault login (all account types; business needs an admin policy) works with the LastPass Authenticator push, desktop biometrics (Windows Hello, Touch ID) or a USB FIDO2 security key. These are device-bound credentials.
+  Q: Business/Teams policies can block account recovery or forbid disabling MFA by email.
+  SRC: https://support.lastpass.com/s/document-item?language=en_US&bundleId=lastpass&topicId=LastPass%2Frecover-master-password.html https://support.lastpass.com/s/document-item?language=en_US&bundleId=lastpass&topicId=LastPass%2Flost-phone-disable-mfa.html&_LANG=enus https://support.lastpass.com/s/document-item?language=en_US&bundleId=lastpass&topicId=LastPass%2FLastPass_Authenticator_disable_lpa.html&_LANG=enus
+## proton-pass — Proton Pass (Proton Account) [password_manager]
+  1F: password,master_password | 2F: totp,security_key,backup_codes
+  R backup_codes (instant): One-time 2FA recovery codes are issued when 2FA is turned on.
+  R recovery_email (instant): Email recovery can reset the password but DOES NOT decrypt data (Pass vaults, Mail and so on), so a data recovery method is also needed. When signed out without a 2FA device, 'I don't have my 2FA device → I don't have my back-up code' sends a 2FA recovery code
+  R recovery_phone (instant): SMS recovery works the same way as email: password reset or a 2FA recovery code, but no data decryption.
+  R recovery_key (instant): A 12-word recovery phrase resets the password AND recovers the data. A recovery file restores data only, not the password.
+  R trusted_device (instant): Device data backup is on by default in Proton web apps: signing in on a browser that stayed logged in before decrypts the data. Signed-in reset works from a device where you are still signed in.
+  R recovery_contact (instant): Contact-assisted data recovery with 1 to 5 Proton users. It unlocks data after a password reset but cannot reset the password, and the contacts never see your data.
+  R waiting_period (slow): With no other reset method, a password reset still works from a signed-in session but only after a 72-hour wait, with notices sent to other signed-in devices.
+  R emergency_access (slow): Paid plans only. The contact must have a Proton Mail address. The wait before automatic access is none, 1, 2, 3, 7, 14 or 30 days, and you can deny a request.
+  LEGACY: Emergency Access (launched Aug 2025, all paid plans, up to 5 contacts who each need a Proton account): after the chosen wait (0 to 30 days), trusted contacts can reach the account's data, including Pass passwords, Mail and Drive.
+  Q: Resetting the password through the recovery email or phone WITHOUT a recovery phrase, recovery file, signed-in device or recovery contact leaves the encrypted Pass vault unreadable.
+  Q: The optional Proton Pass 'extra password' is a second secret on top of the account password. The docs describe no way to recover or reset it, and without it you cannot open Pass. The schema's master_password stands for this optional extra password.
+  Q: 2FA methods are an authenticator app (TOTP) or U2F/FIDO2 security keys. SMS is not a 2FA method, only a recovery channel.
+  Q: Unverified: whether a passkey can be the first factor for signing in to the Proton Account. Proton Pass stores passkeys for other sites on all plans.
+  Q: Losing the password with no recovery method set up risks permanent loss of the account and data.
+  SRC: https://proton.me/support/set-account-recovery-methods https://proton.me/support/two-factor-authentication-2fa https://proton.me/support/emergency-access
+## apple-passwords — Apple Passwords / iCloud Keychain [password_manager]
+  1F: password | 2F: trusted_device_code,sms,voice,security_key,recovery_key
+  R trusted_device (instant): A new device joins iCloud Keychain when an existing Keychain device approves (sponsors) it, or when you enter the passcode of a previous device ('approve with an old passcode or from another device').
+  R recovery_phone (instant): Keychain escrow recovery for when all devices are gone: Apple Account sign-in, an SMS to the trusted phone number, then the passcode of a PREVIOUS device (with 2FA the device passcode is the iCloud security code). Only 10 tries are allowed; after the 10th fail
+  R recovery_contact (instant): Up to 5 account recovery contacts (iOS 15+, iMessage, age 13+) can generate a code for you. With ADP they can also help you reach end-to-end encrypted data. They never get into your account.
+  R recovery_key (instant): A 28-character recovery key, used with the trusted phone number and an Apple device. Setting it up TURNS OFF Apple's standard account recovery. Losing both the key and trusted devices means permanent lockout.
+  R waiting_period (slow): Apple Account recovery takes 'several days or more' and Apple Support cannot speed it up. It is not available if a recovery key is set. It restores account access only. Keychain is always end-to-end encrypted, so it still needs an old device passcode or a reco
+  LEGACY: A Legacy Contact (access key plus death certificate) can reach photos, messages, notes, files and backups, but iCloud Keychain data (passwords, passkeys, payment info) is explicitly EXCLUDED. Apple offers no legacy path to saved passwords or passkeys.
+  Q: Passwords and passkeys in iCloud Keychain are ALWAYS end-to-end encrypted, with or without Advanced Data Protection. Apple cannot restore them through support.
+  Q: Remembering the passcode of an old iPhone/iPad/Mac, plus getting the SMS on the trusted number, can recover the keychain even if every device was destroyed. Without the passcode, or after 10 failed tries, the keychain is gone.
+  Q: If a new device can't be approved, Apple asks you to 'reset your end-to-end encrypted data', which deletes the keychain.
+  Q: With security keys turned on (at least 2 FIDO keys), they become the ONLY way to sign in on new devices apart from an already signed-in iPhone/iPad. Losing all keys and trusted devices means permanent lockout.
+  Q: Turning on Advanced Data Protection requires a recovery contact or recovery key, after which Apple cannot help recover data.
+  Q: Voice calls to the trusted number: expected but not re-verified this session. Apple's 2FA page confirms codes on trusted devices or sent to the trusted phone number.
+  SRC: https://support.apple.com/guide/security/secure-icloud-keychain-recovery-secdeb202947/web https://support.apple.com/en-us/102631 https://support.apple.com/en-us/109345
+## google-password-manager — Google Password Manager [password_manager]
+  1F: password,passkey_synced | 2F: push,passkey,security_key,totp,sms,voice,backup_codes
+  R backup_codes (instant): 8-digit Google backup codes stand in for the 2SV step. Each can be used once.
+  R recovery_email (instant): Google Account recovery through the recovery or alternate email. Google says recovery works better from a device and place where you usually sign in.
+  R recovery_phone (instant): Google Account recovery through a code sent to the recovery or backup phone.
+  R trusted_device (instant): A device you usually sign in on helps account recovery. For passkeys and on-device-encrypted passwords, a new device also needs the screen lock of a previous Android device or the Google Password Manager PIN.
+  R recovery_contact (instant): Google recovery contacts (rolled out Oct 2025): up to 10 people with Google Accounts, who should be able to respond within 15 minutes. A contact can be used for recovery only 7 days after being added. Not available for Advanced Protection, Workspace or child a
+  R support_form (slow): Google's account recovery flow (g.co/recover) is an automated questionnaire, for example previous passwords. If it fails, Google suggests creating a new account; there is no documented manual support path for consumer accounts.
+  LEGACY: Inactive Account Manager: up to 10 trusted contacts get a download link for chosen data after an inactivity period you set. Unverified: whether Google Password Manager passwords or passkeys can be included; the help page does not list them.
+  Q: By default saved PASSWORDS use Google-managed encryption, and on-device encryption is opt-in. Getting the Google Account back therefore normally brings the passwords back.
+  Q: With on-device encryption, you lose all passwords if you lose both your Google password and the screen lock of an eligible device, or every signed-in device. Google cannot recover them, and the reset deletes all saved passwords.
+  Q: PASSKEYS are always end-to-end encrypted. A new device needs the Google Password Manager PIN (made when the first passkey is created on a computer/iPhone/iPad) or the lock-screen PIN, pattern or password of an Android device. If the PIN can't be recovered on a
+  Q: Access to Google Password Manager depends entirely on the Google Account, whose 2SV options are Google prompts, passkeys, security keys, authenticator app, SMS or voice, and backup codes.
+  Q: Google warns that SMS and voice codes are vulnerable to phone-number attacks, so a SIM-swap risk applies.
+  SRC: https://support.google.com/accounts/answer/11350823 https://support.google.com/chrome/answer/16608973?hl=en&co=GENIE.Platform%3DDesktop https://support.google.com/accounts/answer/16590793?hl=en
+## google-authenticator — Google Authenticator [authenticator]
+  1F: password,passkey_synced | 2F: 
+  R other (instant): Cloud sync: signing in to a Google Account in the app syncs the codes, and on a new device they sync automatically after sign-in. Needs Android 6.0+ and app version 6.0+. It is optional; 'Use without an account' keeps codes local.
+  R trusted_device (instant): 'Transfer codes' exports QR codes on the old device to import on the new one. The old device must still work.
+  LEGACY: None specific to Authenticator. Synced codes sit in the Google Account; whether Inactive Account Manager can hand them over is unverified.
+  Q: The first_factors are for the Google Account that holds the synced codes, which is only needed when sync is used.
+  Q: Without sync and without the old phone, codes cannot be recovered. You have to go to every site, remove 2FA and set it up again.
+  Q: Circular risk: if the Google Account's own 2SV relies on codes in this app and the phone is lost, restoring the synced codes first needs Google sign-in by another method (prompt on another device, backup codes, SMS, passkey).
+  Q: Google says synced codes are encrypted in transit and at rest. Unverified: whether they are end-to-end encrypted; they were not at the April 2023 launch.
+  Q: Using the app without an account means the codes exist only on that device.
+  SRC: https://support.google.com/accounts/answer/1066447?hl=en&co=GENIE.Platform%3DAndroid https://support.google.com/accounts/answer/185839
+## microsoft-authenticator — Microsoft Authenticator [authenticator]
+  1F: password | 2F: 
+  R other (instant): Android: in-app Cloud Backup is stored in a Microsoft personal account, and 'Restore from backup' needs a sign-in to that same account. Starting January 2027, Android backup moves to Google One backup ('Microsoft Authenticator' in Google One) instead of the Mi
+  R other (instant): iOS: backup needs iCloud Drive, iCloud Keychain and iCloud Backup, with Authenticator turned on under 'Saved to iCloud'. Restoring means reinstalling and signing in to each account. The docs are unclear on whether iOS restore also needs the Microsoft personal 
+  R support_form (slow): Work/school accounts restore only the account name. You have to sign in again or re-register MFA through the organization's IT/admin.
+  LEGACY: None. Backups are tied to the user's Apple Account or iCloud (iOS) or Microsoft personal account (Android, and Google One from Jan 2027).
+  Q: Backups can't cross platforms: an iOS backup cannot be restored on Android, and the reverse.
+  Q: Restore only brings back third-party TOTP secrets and personal Microsoft account OTPs. Passwordless/phone sign-in for a personal account and all work/school accounts must be set up again. No docs mention backing up passkeys.
+  Q: Circular risk: the Microsoft account needed for an Android restore may itself need 2FA held in the lost Authenticator, so Microsoft account recovery is needed first. That is covered in a separate Microsoft account entry, not verified here.
+  Q: Password autofill was retired: adding passwords stopped June 2025, autofill stopped July 2025, and saved passwords stopped being accessible in mid-Aug 2025 (moved to Microsoft Edge). Passkeys for work/school accounts in Authenticator still work.
+  Q: The first_factors are for the backup account, not the app (Microsoft personal account on Android, Apple Account on iOS).
+  SRC: https://support.microsoft.com/en-us/authenticator/back-up-your-accounts-in-microsoft-authenticator https://support.microsoft.com/en-us/authenticator/restore-account-credentials-from-microsoft-authenticator
+## authy — Twilio Authy [authenticator]
+  1F: sms_login,master_password | 2F: voice,push
+  R trusted_device (instant): If Multi-Device is on and another Authy install is still active, that device can approve the new registration. Otherwise SMS to the registered number can be used.
+  R recovery_phone (instant): Registration uses the original phone number and country code with an SMS or voice code. The encrypted token backups also need the backups password.
+  R waiting_period (slow): With no other Authy install and Multi-Device off, you must use Account Recovery, which takes 24 hours and 'cannot be rushed'. It does NOT reset the backups password.
+  R support_form (slow): New phone number with no other Authy device: an online phone-change request takes 2 to 4 business days. Authy may check number ownership and ask for identification through secure links. If you forgot the old number or lost the registered email, contact Twilio 
+  LEGACY: None. The account is tied to one phone number and there is no export or heir feature.
+  Q: The account is tied to the phone NUMBER. Losing the number (SIM, carrier) together with the only device means a 2-to-4-business-day phone-change review.
+  Q: Backups are encrypted with a backups password that Twilio never sees and cannot recover. If it is forgotten, or backups were off, the tokens are lost for good.
+  Q: A reinstall counts as a new registration, and an install cannot be restored from cloud or OS backups. Multi-Device and Backups must be on BEFORE switching phones.
+  Q: The desktop apps (Windows, macOS, Linux) reached end-of-life on March 19, 2024. Their installs were invalidated and removed from accounts, leaving only the iOS and Android apps.
+  Q: Authy has no export feature. Moving away means re-enrolling 2FA at every site.
+  SRC: https://help.twilio.com/articles/19752864972955-Reinstalling-Authy-and-Restoring-Access-to-your-Account https://help.twilio.com/articles/19753174870811-Phone-Number-Change-Process-for-Authy-and-How-Long-it-Takes https://help.twilio.com/articles/22771146070299
+## aegis — Aegis Authenticator [authenticator]
+  1F: master_password | 2F: 
+  R other (instant): Automatic backups of the vault can go to a location you choose, including a cloud-synced folder, with versions kept. This works only for encrypted vaults, and restoring needs the backup file and its vault password.
+  R other (instant): An optional 'Android cloud backups' setting lets Android's cloud backup include the vault, for encrypted vaults only. Device-to-device transfers are always allowed.
+  R other (instant): Manual export, plaintext or encrypted, then import on the new device. Aegis can also import from many other authenticator apps.
+  LEGACY: None. An heir would need the device plus its unlock, or a backup file plus the vault password.
+  Q: Android only (Google Play and F-Droid). There is no account and no vendor sync; everything stays on the device unless you set up backups.
+  Q: The vault password (with optional biometric unlock) encrypts the vault and backups with AES-256-GCM. There is no vendor recovery if the password is lost.
+  Q: If automatic backups are left in a local-only folder, losing the phone loses both the vault and the backups.
+  SRC: https://github.com/beemdevelopment/Aegis https://getaegis.app/
+## ente-auth — Ente Auth [authenticator]
+  1F: master_password | 2F: totp,security_key,passkey
+  R recovery_key (instant): A 24-word recovery key resets the password when you are logged out everywhere, and it also gets past a lost 2FA device or passkey. Ente cannot recover an account whose password and recovery key are both lost.
+  R trusted_device (instant): A device that is still logged in can reset the password.
+  R recovery_contact (slow): Ente Legacy: a trusted contact who is an Ente user can start recovery. If the owner doesn't block it within the 7, 14 or 30 day wait, they can change the password and access the account. It is documented for Photos; the account is shared with Auth, so it likel
+  R other (instant): Codes can be exported, for example as HTML QR codes. 'Use without backups' mode keeps everything offline on the device with no account.
+  LEGACY: Ente Legacy trusted contacts (must be Ente users) can take over the account after a 7, 14 or 30 day wait the owner can block. It is documented for Photos; unverified whether it is advertised for Auth, but it is the same Ente account.
+  Q: Codes backed up to Ente are end-to-end encrypted. The account password (plus recovery key) is the only way in, and Ente support cannot reset it.
+  Q: One Ente account covers Photos, Auth and Locker. Ente warns of a circular dependency if the Ente account's own 2FA TOTP lives inside Ente Auth, so keep the recovery key offline.
+  Q: Signing in needs about 1 GB of free RAM for key derivation, which can fail on low-end devices.
+  Q: Offline mode ('Use without backups') means no cloud copy: losing the device loses the codes unless they were exported.
+  Q: Unverified: whether Ente sends an email OTP on login in addition to the password.
+  SRC: https://ente.com/help/auth/faq/ https://ente.com/help/photos/features/account/ https://ente.com/help/photos/features/account/legacy/
+## 2fas — 2FAS Auth [authenticator]
+  1F:  | 2F: 
+  R other (instant): Cloud sync: Google Drive on Android, iCloud on iOS. Turn sync back on with the SAME Google or Apple account on the new phone and codes restore automatically. The Google Drive sync file can have an optional password, which cannot be recovered if forgotten.
+  R other (instant): Import a previously exported backup file. Export with a password to encrypt it; without one, the secrets are plaintext. 2FAS recommends keeping an export on a USB stick or computer.
+  LEGACY: None. An heir would need the phone, the linked Google or Apple account holding the sync, or an exported backup file and its password.
+  Q: There is no 2FAS account and codes live on the device. 2FAS cannot restore codes; without sync or a backup file you must contact each service to reset 2FA.
+  Q: Restoring depends on the Google Account (Android) or Apple Account/iCloud (iOS) used for sync, so their lockout risk carries over.
+  Q: Google Drive sync is Android-only and iCloud sync is iOS-only. Moving between iOS and Android goes through an exported backup file.
+  SRC: https://2fas.com/support/2fas-auth-mobile-app/i-have-lost-all-of-my-tokens-codes/ https://2fas.com/support/2fas-auth-mobile-app/how-does-google-drive-synchronization-work/
+## paypal — PayPal [payments]
+  1F: password,passkey_synced,sms_login | 2F: totp,sms,voice,email_code,push
+  R recovery_phone (instant): The security check can text a 6-digit code or place an automated call to the phone number on file. This is useless if that number is lost or ported.
+  R recovery_email (instant): The security check can send a 6-digit code to the account's email address.
+  R trusted_device (instant): 'Confirm using PayPal app' sends a push to the phone normally used for PayPal. A 'remembered device' counts as one authentication factor.
+  R other (instant): Knowledge checks in the security check: the security questions you chose, questions from a public-records database going back up to 20 years, or entering the full number of a credit card linked to the account.
+  R support_form (slow): If locked out, phone customer service (Contact Us > Call Us as a guest). Have the phone number, email address and a statement for the linked bank account or credit card ready.
+  LEGACY: No legacy contact or beneficiary login. The executor or administrator sends PayPal (US: deceasedaccounts@paypal.com, or by mail to Omaha, NE) a cover sheet, a death certificate, a government photo ID, proof of executor status and a W-9 for the estate. PayPal closes the account and sends the funds by
+  Q: The current US help page names only authenticator apps (Google or Microsoft Authenticator) for opt-in 2-step verification. The security page also mentions 'Text me a code' by SMS.
+  Q: PayPal says passkeys are 'saved to a password manager linked to your device', meaning iCloud Keychain or Google Password Manager, so they are synced. If a device is lost, you can still log in with your password or a one-time passcode.
+  Q: PayPal also offers PIN login and one-time passcode login. For stronger verification it can send OTPs by SMS, WhatsApp, email or phone call.
+  Q: No backup or recovery codes are documented for PayPal 2-step verification.
+  Q: Unverified: whether PayPal still supports hardware security keys for consumer accounts. The current US help pages do not mention them.
+  Q: Unverified: exactly which alternate security-check options appear when TOTP 2-step verification is on and the authenticator is lost. The help pages list the options but say little about how they interact with 2SV.
+  Q: Recovery leans on knowledge (card number, public-records questions), so it may still work after losing a phone. If your wallet and statements are lost too (for example in a fire), you may have to rely on the email code or a phone call to support.
+  SRC: https://www.paypal.com/us/cshelp/article/why-do-i-have-to-complete-a-security-check-help171 https://www.paypal.com/us/cshelp/article/what-is-a-passkey-and-how-do-i-use-it-to-log-in-to-my-paypal-account-help997 https://www.paypal.com/us/cshelp/article/what-is-2-step-verification-help167
+## venmo — Venmo [payments]
+  1F: password | 2F: sms
+  R trusted_device (instant): Sign in from a computer or phone you have used with Venmo before (a remembered device), then manage sessions and update the phone number.
+  R other (instant): On the login screen, 'Other options' / 'I don't have access to this phone' offers an alternate way to verify. Help pages say you may be able to authenticate by verifying the linked bank account or card details.
+  R id_verification (slow): Help says to 'complete identity verification to sign in' when no trusted device is available. Unverified: what this involves (ID or selfie) and how long it takes.
+  R support_form (slow): Contact Support by chat, or by phone if you cannot use the app. They ask for full name, the email and old phone number, and either full routing number plus last 4 of the bank account or first 6 and last 4 of the card.
+  R recovery_email (instant): A password reset link goes to the account email. This resets only the password. A new device still needs the MFA code or an alternate verification.
+  LEGACY: Venmo will not give access to, or transfer ownership of, an account to anyone but the holder. The family contacts Support with the deceased's name, the email or phone on the account and a death certificate. If there is money or crypto in the account, the requester may also need a government photo ID
+  Q: New-device sign-in requires a code sent to the registered phone number (SMS). No authenticator app, security key or passkey option is documented.
+  Q: Face ID, Touch ID and passcode only lock the app locally. They are not sign-in factors.
+  Q: Access effectively depends on the phone number. After recovering, update the phone number right away.
+  Q: Recovery through Support depends on knowing the linked bank routing and account digits or the card digits, so keep those somewhere other than the lost phone or wallet.
+  Q: Unverified: passkey support. None is documented in the Venmo help center.
+  SRC: https://help.venmo.com/cs/articles/im-having-trouble-with-a-verification-code-when-signing-in-from-a-new-device-vhel115 https://help.venmo.com/cs/articles/login-security-vhel151 https://help.venmo.com/cs/articles/lost-or-stolen-phone-vhel242
+## cash-app — Cash App [payments]
+  1F: sms_login,email_link,passkey_synced | 2F: 
+  R recovery_email (instant): If the phone is lost, choose 'Use email' at login and enter the code or magic link sent to the email address linked to the account.
+  R recovery_phone (instant): If the email is lost, sign in with the code texted to the linked phone number.
+  R trusted_device (instant): An app that is still signed in keeps working. Under Profile > Your Devices you can review devices and log them out.
+  R other (instant): If you cannot use the linked phone or email, go to login screen > '...' > 'I need help logging in', choose how to look up the account, and 'complete any of the prompts'. Unverified: what the prompts are.
+  R support_form (slow): Contact Cash App Support in the app or by phone.
+  LEGACY: Estate Services: the requester provides a death certificate, their own U.S. ID (front and back photos), a selfie holding that ID, their relationship to the deceased, the account's $Cashtag, phone or email, and a Small Estate Affidavit or probate letters. No login handoff. Phone 1-800-969-1940. Sourc
+  Q: There is no password. Every sign-in sends a one-time code (or magic link) to the phone or email, then may ask you to confirm your PIN. The PIN is a knowledge factor with no slot in this schema, so second_factors is empty.
+  Q: Whoever controls the linked email inbox or phone number can start a sign-in. Cash App tells users to secure the email account with 2FA.
+  Q: Passkeys are optional and 'work across all compatible devices', so they are synced. They are available on mobile and web.
+  Q: Security Lock (passcode, Touch ID or Face ID for each payment) protects payments, not sign-in.
+  Q: Unverified: whether in-app recovery works when both the phone number and the email are lost.
+  SRC: https://cash.app/help/us/en-us/3130-access-old-account https://cash.app/help/us/en-us/6678-set-up-a-passkey https://cash.app/help/us/en-us/6801-log-in-and-manage-your-account-web
+## coinbase — Coinbase [crypto]
+  1F: password | 2F: security_key,passkey,totp,push,sms
+  R other (instant): Use another 2FA method already enrolled ('Try another way'). Coinbase recommends two security keys, passkey plus security key, or passkey plus push.
+  R id_verification (slow): Account recovery: enter email and password, then upload a government ID (and possibly a selfie). 'This process takes up to 24 hours', and you may be unable to send funds for 24 hours afterward. You must update your 2FA within 24 hours of signing in.
+  R recovery_contact (instant): Trusted contacts (2 to 5 people; all or a majority must approve) can approve an account recovery. They can be used 24 hours after setup. This route cannot change the email or 2FA method, and it deletes saved payment methods. Speed depends on how fast the conta
+  R support_form (slow): Contact Support if the recovery flow is unavailable (for example the account is locked as compromised) or the email is lost and new-device confirmation fails.
+  LEGACY: Individual accounts cannot name a beneficiary. The claimant (who needs their own Coinbase account) submits the Executor Services form with a death certificate, probate documents (letters testamentary or administration, affidavit for collection or small estate affidavit), the photo ID of the person n
+  Q: 2FA is required on every account. SMS is the default and least secure method.
+  Q: Passkeys can be synced (iCloud Keychain, Google Password Manager, Microsoft, 1Password) or tied to the device they were created on.
+  Q: Coinbase 'can't recover or replace lost keys' (security keys). No backup or recovery codes are documented.
+  Q: New-device confirmation is separate from 2FA: a 'Verify this device' link is emailed and must be opened on the same device and network. Losing the email inbox blocks sign-in on a new device even with valid 2FA.
+  Q: If the account was made with Sign in with Apple and Hide My Email, confirmation emails go to the Apple relay address.
+  Q: Account recovery needs the password first. Accounts 'created without a password' must reset it first, which needs the email.
+  Q: Recovery through trusted contacts cannot change the email or 2FA method.
+  SRC: https://help.coinbase.com/en/coinbase/managing-my-account/get-back-into-my-account/account-recovery-lost-email-2step-verification https://help.coinbase.com/en/coinbase/managing-my-account/get-back-into-my-account/restoring-2-factor-authentication-from-a-secret-seed https://help.coinbase.com/en/coinbase/getting-started/authentication-and-verification/device-confirmation-troubleshooting
+## us-big-bank — Large US bank online banking (Chase / Bank of America pattern) [bank]
+  1F: password,passkey_synced | 2F: sms,email_code,push,trusted_device_code,security_key,passkey
+  R recovery_phone (instant): A one-time code texted to the mobile number on file. Bank of America only supports U.S. mobile numbers for some features.
+  R recovery_email (instant): Both banks can send the one-time code to email instead of the phone (Chase: 'Receive one-time codes by email'; BofA: code 'by text or email').
+  R trusted_device (instant): A still-signed-in mobile app can approve (Chase app notifications or trusted device; BofA 'Digital ID' push or 6-digit Mobile Token in the app).
+  R id_verification (instant): Chase trusted-device enrollment can use a photo of a driver's license or state ID, or details from your Chase debit card.
+  R other (instant): The 'Forgot username/password' flow verifies with SSN or Tax ID plus an account or card number, then usually a one-time code.
+  R support_form (slow): Call the number on the back of your card or statement. The agent verifies identity by knowledge questions, and can often restore access the same day.
+  R in_person (slow): Visit a branch with government photo ID to update the phone number or email and restore access. Limited to business hours.
+  LEGACY: No digital legacy contact. Anyone can report a death, but account details go only to an authorized party with a death certificate and letters testamentary or administration (or an affidavit where no probate is needed). Joint owners and POD/TOD beneficiaries get the funds through estate services, not
+  Q: This is a generic template built from Chase and Bank of America. Other banks differ.
+  Q: Common failure: the SMS code goes to a phone number you no longer control. Fallbacks are the email code or a phone call to the bank.
+  Q: Chase offers optional '2-step verification every time you sign in on a browser'. Otherwise extra checks trigger on new devices or unusual activity.
+  Q: Bank of America lets you choose 2FA for every login or only for unrecognized devices.
+  Q: Passkeys are supported on chase.com and at Bank of America. BofA says they are stored on the device or in a password manager such as iCloud Keychain or Google Password Manager, and sync across devices.
+  Q: Bank of America USB (FIDO2) security keys: up to 2 per account. A key is removed if unused for 6 months and must be renewed every 3 years. If the key is unavailable, an authorization code is required.
+  Q: No authenticator app (TOTP) is documented for either bank's consumer online banking. Bank of America's SafePass card is a legacy item and was not verified as current.
+  Q: Unverified: whether Chase codes can be delivered by voice call. The help page only says 'email or phone'.
+  Q: Recovery depends on SSN and account or card numbers. If the wallet and papers are destroyed (for example in a fire), recovery may need a phone call or a branch visit.
+  SRC: https://www.chase.com/digital/resources/privacy-security/security/how-you-can-protect https://secure.bankofamerica.com/auth/security-center/additional-security-features/?request_locale=en-us&returnSiteIndicator=GAIMW https://www.chase.com/personal/banking/education/basics/trusteddevice
+## login-gov — Login.gov [government]
+  1F: password | 2F: passkey,security_key,totp,sms,voice,backup_codes
+  R other (instant): Sign in with email and password, choose 'Choose another security option' and use any other enrolled method (PIV/CAC, security key, face or touch unlock, authenticator app, phone, backup codes).
+  R backup_codes (instant): 10 single-use codes. Login.gov advises against making them your only method.
+  R recovery_key (instant): Personal key (16 characters, single use): after a password reset, it restores access to your verified identity data. Without it you must verify your identity again.
+  R recovery_email (instant): A password reset link is emailed. This covers the password only. MFA is still required, and verified accounts need the personal key or a new identity verification.
+  R waiting_period (slow): If every MFA method is lost, the only path is deleting the account: request, wait 24 hours for a second email, confirm, then create a new account. Reusing the same email means another 24-hour wait. Data held by partner agencies is kept.
+  R id_verification (slow): After recreating the account or resetting without the personal key, verify identity again, online with ID photos or in person.
+  R in_person (slow): In-person identity verification at about 18,000 participating Post Offices, using a driver's license or state ID only. The barcode expires 7 days after the online steps.
+  LEGACY: Unverified: no deceased-user or legacy process is documented. Login.gov says it cannot sign in, delete or manage an account on a user's behalf. Survivors deal with each agency (SSA, VA and others) directly.
+  Q: Login.gov 'cannot grant you access to your account if you get locked out and/or lose your authentication method'. Support will not unlock accounts, so losing all MFA means deleting the account, waiting 24 hours and starting over.
+  Q: Face or touch unlock is a passkey that works as a second factor only. It cannot be your only MFA method. It is saved to the device, or synced through iCloud Keychain, Google, Windows Hello or 1Password. On macOS, cloud sync is required.
+  Q: PIV/CAC government employee cards are also supported. The schema has no enum value for them.
+  Q: Login.gov strongly encourages enrolling two or more methods.
+  Q: A lost password plus a lost personal key means verifying your identity again before you can reach agency services that need it.
+  SRC: https://www.login.gov/help/create-account/authentication-methods/ https://www.login.gov/help/manage-your-account/delete-your-account/ https://www.login.gov/help/trouble-signing-in/forgot-your-password/
+## id-me — ID.me [government]
+  1F: password | 2F: passkey,security_key,totp,push,sms,voice,recovery_key
+  R recovery_key (instant): One recovery code is issued at MFA setup and shown for download or writing down. It is single use and replaced after use.
+  R other (instant): Use another enrolled MFA method. ID.me recommends at least two.
+  R id_verification (instant): Self-serve 'MFA recovery process': sign in with email and password, then prove ownership with a live selfie, ID upload, or by confirming email and personal info. A new MFA method must be set up within 30 minutes.
+  R support_form (slow): Some ownership checks use a video call with an ID.me agent. If you have lost access to your email, you 'need to work with an ID.me agent' by chat.
+  R recovery_email (instant): A password reset link or 6-digit code is emailed and expires in 15 minutes. MFA is still required afterward.
+  LEGACY: Unverified: no deceased-user process is documented. Only the owner can close a wallet, which stays revoked for 7 days before the profile is deleted. ID.me may keep data up to 3 years. Survivors deal with each agency (IRS, SSA, VA, state agencies) directly.
+  Q: ID.me says to use the same device the passkey was set up on, so treat it as device-bound for modeling, even though some platforms can sync it.
+  Q: Security keys can be USB or NFC (for example YubiKey 5 NFC tapped to a phone).
+  Q: The code generator and push approvals come from the ID.me Authenticator app. Unverified: whether third-party TOTP apps are accepted.
+  Q: The MFA options page also mentions 'backup codes' next to recovery codes. Details are unverified.
+  Q: MFA recovery starts with signing in using email and password, so you need both the password and email access to self-serve.
+  Q: Many agencies (IRS, SSA, VA, many states) rely on ID.me, so losing it locks you out of those services.
+  SRC: https://help.id.me/hc/en-us/articles/360018113053-Multi-factor-authentication-MFA-options-for-ID-me https://help.id.me/hc/en-us/articles/34192861849623-ID-me-multi-factor-authentication-MFA-recovery-process-if-you-can-t-sign-in https://help.id.me/hc/en-us/articles/360017969334-Get-and-use-your-ID-me-recovery-code
+## stripe — Stripe (account owner login) [developer]
+  1F: password,passkey_synced | 2F: passkey,security_key,totp,sms,backup_codes
+  R backup_codes (instant): A backup code is shown once when 2FA or a first passkey is set up. It turns off 2FA and lets you sign in. Generating a new one invalidates the old one.
+  R other (instant): Use another enrolled method. Stripe recommends two or more methods and avoiding SMS.
+  R id_verification (slow): Owners submit an account recovery request at dashboard.stripe.com/recover to prove identity. A decision takes 'up to a couple of business days'. If approved, an emailed link valid for 48 hours removes 2FA, then you sign in with email and password. If denied, S
+  R support_form (slow): Team members who are not the owner ask an account admin to reset their 2FA in Team settings. Owners have only the recovery request.
+  LEGACY: No legacy contact. While available, the owner can transfer ownership to an Administrator or Super Administrator. If the owner is unavailable (for example deceased), someone contacts Stripe Support. That person goes through identity verification and verification of their relationship to the business,
+  Q: Methods ranked by Stripe from most to least secure: passkeys, security keys, Touch ID or Windows Hello, authenticator apps, SMS.
+  Q: 2FA is optional for individual users, but admins can require it for the whole team.
+  Q: Passkeys allow passwordless one-click login, or act as a second factor after a password. They can be platform biometrics, a device PIN or a hardware key. Stripe does not say whether they sync; that depends on where the passkey is stored.
+  Q: Recovery after approval still needs the email inbox (for the link) and the account password.
+  Q: Adding a second Administrator or Super Administrator lowers lockout and death risk for the business.
+  Q: Unverified: whether Stripe asks for an email code on a new device when 2FA is off.
+  SRC: https://support.stripe.com/questions/enable-two-step-authentication https://support.stripe.com/questions/sign-in-to-your-stripe-account-without-a-2fa-device-and-or-backup-code https://support.stripe.com/questions/set-up-a-passkey-for-one-click-login
+## x-twitter — X (Twitter) [social]
+  1F: password,passkey_synced | 2F: sms,totp,security_key,push,trusted_device_code,backup_codes
+  R backup_codes (instant): Backup code shown at 2FA enrollment. Up to 5 active codes; they must be used in the order generated (using one out of order invalidates earlier ones). Works only for X logins, not third-party apps.
+  R trusted_device (instant): From a still-open web or app session you can turn off 2FA, remove the phone, or generate new backup codes. The 'Login code generator' in the logged-in X app also gives a code that works offline.
+  R recovery_email (instant): Password reset only (email, phone or username entered, link sent to account email). It does not bypass 2FA.
+  R recovery_phone (instant): Password reset by SMS to the account phone. SMS as a 2FA factor is for Premium subscribers only.
+  R support_form (slow): With no session and no backup code, X only says 'contact our support team'. No timeline is given and recovery is not guaranteed.
+  LEGACY: No legacy contact. A verified immediate family member or estate representative can ask for deactivation (needs ID plus death certificate). X states it cannot give account access to anyone. Deactivation for incapacitated users needs a Power of Attorney.
+  Q: SMS 2FA has been limited to X Premium (formerly Twitter Blue) subscribers since 20 March 2023, and availability varies by country and carrier (blog.x.com, 2023 'update on two-factor authentication using SMS').
+  Q: A security key can be the only 2FA method, with no other backup method required.
+  Q: Password reset needs access to the account's phone or email. X's help says if you have neither 'you won't be able to recover your password' and may need a new account.
+  Q: iOS app 2FA key: X recommends an encrypted device backup. Plain iCloud backups typically don't keep the key.
+  Q: Third-party apps need a temporary password when 2FA is on. It expires after 1 hour.
+  Q: Passkeys can be used in the iOS and Android apps. On iOS they sync through iCloud Keychain. You cannot sign up with a passkey, and the password still works as another way in.
+  Q: Push login approval exists only for accounts enrolled in the pre-March-2016 login verification.
+  Q: unverified: Google or Apple social sign-in behaviour was not checked against the help pages.
+  SRC: https://help.x.com/en/managing-your-account/two-factor-authentication https://help.x.com/en/managing-your-account/issues-with-login-authentication https://help.x.com/en/rules-and-policies/contact-x-about-a-deceased-family-members-account
+## tiktok — TikTok [social]
+  1F: password,passkey_synced,sms_login | 2F: sms,email_code,totp
+  R recovery_phone (instant): You can log in with phone number plus an SMS code (the 'Send code' option on the login page), and reset your password by SMS.
+  R recovery_email (instant): Password reset code sent to the linked email. Email is also a 2SV method.
+  R backup_codes (instant): Single TOTP 'recovery code' issued when you set up an authenticator app. Enter it under 'Can't access the app' to reset the authentication method.
+  R recovery_contact (instant): 'Ask friends to verify': at least 2 TikTok friends approve within a limited time window, and attempts per day are limited. Self-serve, but speed depends on the friends.
+  R trusted_device (instant): Remembered or trusted devices skip code prompts. Saved login info is stored in your iCloud or Google account, so a device signed into the same iCloud or Google account can log in automatically.
+  R support_form (slow): 'Need more help?' identity form. TikTok says this may take up to 30 days. Used when the TOTP recovery code or the signup email is lost.
+  LEGACY: unverified: TikTok reportedly memorializes accounts (labelled 'Remembering', no one can log in) when someone reports a deceased user through Report a problem. No official help page was confirmed. No legacy contact, and no access is given.
+  Q: Turning on 2SV requires choosing at least two methods from Phone, Email, Authenticator and Password. The password itself can act as a 2SV step.
+  Q: Even without 2SV, logging in on an unrecognized device asks for the password plus a one-time code sent by SMS or email.
+  Q: Changing the email or phone sends codes to both the old and the new address or number, so both must be active. A lost number cannot simply be swapped out self-serve.
+  Q: Passkeys are stored in iCloud Keychain, Google Password Manager or another manager such as 1Password, and work on any device signed into the same account. On iOS they require iCloud Keychain and Apple ID 2FA.
+  Q: The web login offers email or username with password only. The code-based login is the phone path.
+  Q: unverified: whether TikTok issues more than one backup code.
+  SRC: https://www.tiktok.com/support/faq_detail?id=7543604780950624824 https://www.tiktok.com/support/faq_detail?id=7581816994987776523 https://www.tiktok.com/support/faq_detail?id=7581820709597583928
+## linkedin — LinkedIn [social]
+  1F: password,passkey_synced | 2F: sms,totp
+  R trusted_device (instant): From an active desktop or mobile session you can turn off two-step verification and set it up again on a new phone or app.
+  R recovery_email (instant): Password reset through the account email. It does not bypass two-step verification.
+  R recovery_phone (instant): Password reset or sign-in identifier through the account phone. It is not a separate 2FA backup.
+  R id_verification (slow): If you are logged out everywhere, choose 'verify your identity' at the 2SV prompt and upload a government ID through Persona, sometimes with a selfie. No timeline is stated. Data is deleted within about 14 days. In Canada, the EU and the UK a notarized Affidav
+  R support_form (slow): If fully locked out, 'contact us for further assistance'.
+  LEGACY: No legacy contact. Anyone can report a member as deceased so the profile is memorialized. An authorized estate representative can ask for closure with court-issued letters or a court order (a will is not accepted). Access is locked after death is confirmed, and LinkedIn will not disclose credentials
+  Q: No backup or recovery codes are documented. Losing the 2SV phone with no active session forces the government-ID (Persona) route.
+  Q: The authenticator link is 'unique to each mobile device and each app install'. A reset or new phone means setting it up again, which needs an active session.
+  Q: You can have up to 5 passkeys, and a registered passkey works on a new device without re-enrolling, so they are synced. Adding one may ask for an email code or approval in the LinkedIn app.
+  Q: Sign in with Microsoft, Apple or Google is offered as federated login.
+  Q: unverified: third-party sources describe a 'Send me a one-time sign in link' email option. The official One-time Sign In page returned 404, and it was not visible on the login page.
+  SRC: https://www.linkedin.com/help/linkedin/answer/a1381088/turn-two-step-verification-on-and-off https://www.linkedin.com/help/linkedin/answer/a1335344 https://www.linkedin.com/help/linkedin/answer/a1336663/memorialize-or-close-the-account-of-a-deceased-member
+## reddit — Reddit [social]
+  1F: password,email_link,sms_login | 2F: totp,backup_codes
+  R backup_codes (instant): 10 single-use backup codes, available only through the desktop web settings.
+  R trusted_device (instant): If still logged in elsewhere (for example on a computer), you can generate new backup codes, or link Google or Apple and then log in with that.
+  R recovery_email (instant): Password reset link by email. It also lists the usernames on that email. A magic login link (expires in 10 minutes) is also available.
+  R support_form (slow): Only 'contact us' or r/help is offered. There is no documented procedure for removing 2FA.
+  LEGACY: unverified: no official legacy, memorialization or deceased-user procedure was found on Reddit Help. Families must contact support.
+  Q: 2FA is authenticator-app (TOTP) only and can be enabled only on desktop web. No SMS, security key or passkey 2FA is documented.
+  Q: 2FA applies only to password logins. Accounts that log in with Google or Apple rely on that provider's 2FA.
+  Q: A new phone means disabling and re-enrolling 2FA.
+  Q: The magic link logs into the most recently created account tied to that email.
+  Q: 'Continue With Phone Number' login exists for accounts that signed up with a phone.
+  Q: unverified: whether magic-link or phone-number login is also challenged by TOTP 2FA.
+  SRC: https://support.reddithelp.com/hc/en-us/articles/360043047652-I-have-two-factor-authentication-set-up-but-can-t-log-in-to-my-account-What-do-I-do https://support.reddithelp.com/hc/en-us/articles/360043470031-What-is-two-factor-authentication-and-how-do-I-set-it-up https://support.reddithelp.com/hc/en-us/articles/28620245447572-How-do-I-log-in-and-out-of-my-Reddit-account
+## discord — Discord [messaging]
+  1F: password,passkey_synced | 2F: totp,sms,passkey,security_key,backup_codes
+  R backup_codes (instant): 8-digit single-use codes, often saved as discord_backup_codes.txt. Choose 'Verify with something else', then 'Use a backup code'.
+  R recovery_phone (instant): 'Use a code sent to your phone' works only if SMS MFA was enabled, which in turn requires an authenticator app first.
+  R trusted_device (instant): A logged-in desktop, browser or mobile client can show backup codes (password required) and remove MFA.
+  R recovery_email (instant): Password reset only. It does not bypass MFA.
+  LEGACY: There is no feature to memorialize or transfer an account, and Discord will not give access or data. Family can request deletion with a death certificate, proof of relationship and a photo ID. Whoever controls the account email can reset the password. Accounts unused for 2+ years may be deleted auto
+  Q: Discord states its Support team 'is not able to remove MFA from an account' or issue new backup codes. With no backup codes, SMS backup or other key, the account is lost for good and a new account is needed.
+  Q: Passkeys give one-step passwordless login and can be stored in a password manager. Hardware security keys generally cannot do one-step login and are used only as MFA. The limit is 16 keys or passkeys.
+  Q: SMS MFA can be added only after an authenticator app is set up.
+  Q: unverified: QR-code login from a logged-in mobile app was not re-checked in these help pages.
+  SRC: https://support.discord.com/hc/en-us/articles/115001221072-Lost-Two-Factor-Codes https://support.discord.com/hc/en-us/articles/219576828-Setting-up-Multi-Factor-Authentication https://support.discord.com/hc/en-us/articles/19872987802263--Deceased-or-Incapacitated-Users
+## github — GitHub [developer]
+  1F: password,passkey_synced,passkey_device | 2F: totp,sms,security_key,passkey,push,backup_codes
+  R backup_codes (instant): 2FA recovery codes (github-recovery-codes.txt).
+  R other (instant): Any other registered passkey (it satisfies both password and 2FA), security key, or GitHub Mobile push.
+  R recovery_phone (instant): Fallback SMS number, if configured. SMS is not supported in all countries.
+  R support_form (slow): Account recovery request (requires knowing the password): verify email with a one-time code, then prove ownership with a previously used verified device, an SSH key or a personal access token. GitHub Support reviews it and emails within 3 business days.
+  R waiting_period (slow): An approved recovery request has a 3-5 day waiting period. You can cancel by finding your 2FA credentials or recovery codes in the meantime.
+  LEGACY: Account successor: a pre-designated person for repositories. Under the Deceased User Policy, an authorized person (photo ID, death certificate, documents showing authority) can ask GitHub to decide what happens to the account content, case by case. No direct login access is guaranteed.
+  Q: Without the recovery-request factors (verified device, SSH key or PAT), GitHub Support 'will not be able to restore access'. The last resort is unlinking your email from the locked account so you can reuse it on a new account.
+  Q: When 2FA is off, signing in on a new device needs a verification code emailed to all primary and backup emails (valid 1 hour), or a GitHub Mobile prompt. This check is skipped with 2FA on or with a passkey sign-in.
+  Q: Passkeys can be synced (iCloud and others) or device-bound (FIDO2 keys).
+  Q: A recovery request needs the password, so a forgotten password plus lost 2FA cannot be recovered this way.
+  SRC: https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/recovering-your-account-if-you-lose-your-2fa-credentials https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication https://docs.github.com/en/site-policy/other-site-policies/github-deceased-user-policy
+## aws-root — AWS root account [cloud]
+  1F: password | 2F: passkey,security_key,totp
+  R other (instant): Another registered MFA device ('Try another MFA method'). Up to 8 MFA devices of any type are allowed for root.
+  R recovery_email (instant): 'Troubleshoot MFA', then 'Sign in using alternative factors': a verification email from recover-mfa-no-reply@verify.signin.aws. This must be followed by the phone step.
+  R recovery_phone (instant): Second half of the alternative-factor flow: 'Call me now' places a voice call to the account's primary contact phone, where you key in a 6-digit code. Both the email and the phone are required.
+  R support_form (slow): If you can't reach the email or the primary contact phone, use the AWS 'Lost or unusable MFA device' support contact form. Manual process with no timeline given.
+  LEGACY: unverified: no legacy or deceased-user feature was found in IAM docs. In practice access follows control of the root email inbox plus the primary contact phone (plus the password). Alternate contacts receive notices but cannot sign in.
+  Q: MFA is enforced for root users of all account types.
+  Q: SMS MFA is no longer supported. The options are passkeys (synced through Apple, Google, Microsoft, 1Password, Dashlane or Bitwarden), FIDO security keys, virtual TOTP apps, and hardware TOTP tokens (which must be bought from AWS-listed vendors).
+  Q: Updating the primary contact phone needs an IAM admin rather than root. If the phone number is outdated and there is no IAM admin, only the Support route is left.
+  Q: The root password is reset by email.
+  Q: In AWS Organizations with centralized root access, member accounts may have no root credentials at all (the default for new member accounts). The member root cannot sign in or recover its password unless the management account runs the 'Allow password recovery
+  Q: IAM users cannot recover MFA themselves. An administrator must deactivate the device.
+  SRC: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_lost-or-broken.html https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html https://docs.aws.amazon.com/IAM/latest/UserGuide/id_root-user.html
+## cloudflare — Cloudflare [cloud]
+  1F: password | 2F: security_key,totp,email_code,backup_codes
+  R backup_codes (instant): Single-use backup codes, which can be regenerated from the dashboard.
+  R recovery_email (instant): If email 2FA is the enrolled method, a code is sent to the account email, so email access alone gets you past 2FA.
+  R trusted_device (slow): Account recovery ('Lost all 2FA devices and backup codes?'): an access code sent to the account email, then 'Verify device' checks that you are on a previously used device. This leads into the waiting period.
+  R waiting_period (slow): After the device is verified, an email with access instructions arrives within 3-5 days. This 'cannot be expedited'.
+  R support_form (slow): 'Request manual verification' if device verification fails (for example after cookies are cleared or on a new browser or computer).
+  LEGACY: unverified: no legacy or deceased-account procedure was found in Cloudflare docs.
+  Q: Sign-in options include email and password, SSO, and social login with Apple, Google or GitHub. Cloudflare 2FA is added on top of the social provider's own 2FA.
+  Q: If the account was created with Apple's Hide-My-Email relay and you later change your Apple ID or email, the Cloudflare account 'will be unable to be retrieved and all login options will be permanently lost'.
+  Q: Social-login accounts start without a password, and one must be set before enabling 2FA.
+  Q: Security keys include built-in platform authenticators (Touch ID, Windows Hello, Android fingerprint) as well as hardware keys. No separate passkey first-factor sign-in is documented.
+  Q: Recovery depends on a device with a history of logging in. A lost phone and a replaced laptop together can force manual verification.
+  SRC: https://developers.cloudflare.com/fundamentals/user-profiles/2fa/ https://developers.cloudflare.com/fundamentals/user-profiles/account-recovery/ https://developers.cloudflare.com/fundamentals/user-profiles/login/
+## dropbox — Dropbox [cloud]
+  1F: password,passkey_synced | 2F: sms,totp,security_key,passkey,push,backup_codes,email_code
+  R backup_codes (instant): 10 single-use 8-digit backup codes: choose 'Having trouble getting a code?', then 'Enter the emergency backup code'.
+  R recovery_phone (instant): Optional backup phone number: 'Text my backup phone'.
+  R recovery_email (instant): If a recovery email was added, it can receive security codes or a password reset.
+  R trusted_device (instant): 'Send me a notification' to the Dropbox desktop or mobile app. A computer running the desktop app counts as a trusted device and doesn't need a 2FA code.
+  R support_form (slow): If everything else fails, contact Dropbox support. No timeline or guarantee is given. An 'access recovery questionnaire' exists for the new-device email one-time-code check.
+  LEGACY: No legacy contact. Access to a deceased user's account needs proof of death, the requester's ID, and a valid court order establishing that the deceased intended the requester to have access. It 'can take some time' and access is not guaranteed. Dropbox suggests first checking the synced Dropbox fold
+  Q: Without 2FA, Dropbox emails a 6-digit one-time code when you sign in from an unrecognized device or location, so losing email access can block new-device logins.
+  Q: SMS 2FA is available only in some countries (100+ are listed as unsupported).
+  Q: Security keys work only in Chrome or Firefox on dropbox.com.
+  Q: Passkeys work both as passwordless sign-in (email, then 'Use your passkey', with a QR code for cross-device) and as a 2FA method. Adding one requires the account password.
+  Q: Files synced to a local Dropbox folder stay usable offline even if the account is locked.
+  SRC: https://help.dropbox.com/account-access/issues-2-factor-authentication https://help.dropbox.com/account-access/enable-2-factor-authentication https://help.dropbox.com/account-settings/access-account-of-someone-who-passed-away
+## steam — Steam [gaming]
+  1F: password | 2F: email_code,totp,push,backup_codes,recovery_key
+  R recovery_key (instant): Steam Guard recovery code (starts with 'R', found in the app under Steam Guard, gear icon, Recovery Code). It removes the mobile authenticator. Removing the authenticator puts a 15-day hold on trades and Market listings.
+  R recovery_phone (instant): An SMS code to the account phone lets you move the authenticator to a new phone ('I no longer have access to my authenticator'), with a 2-day trade and Market restriction. Valve advises getting a replacement SIM with the same number from your carrier.
+  R backup_codes (instant): Emergency backup codes from Account Details, then Manage Steam Guard. Generating them needs an SMS code. Steam emails you whenever they are created or used.
+  R recovery_email (instant): Email Steam Guard codes and password reset through the verified account email.
+  R support_form (slow): No phone and no recovery code: open a Steam Support ticket ('Help me with my issue') to remove the authenticator. Without access to the email you must give proof of account ownership.
+  LEGACY: unverified: no official bereavement process was found on Steam Support. Steam Support reportedly says accounts and games are non-transferable and it will not give others access.
+  Q: Steam Guard email codes are on by default once the email is verified. The mobile authenticator replaces them.
+  Q: Mobile authenticator codes come only from the Steam Mobile App (a proprietary 30-second code), not from standard authenticator apps. A phone is required.
+  Q: Only one authenticator device is allowed per account.
+  Q: Sign-in can also be approved by a push prompt in the app or by scanning a QR code with the logged-in Steam Mobile App, so the phone works as a trusted device.
+  Q: VoIP phone numbers are rejected. One phone number can be shared across accounts. SMS may be delivered through Telegram in some countries.
+  SRC: https://help.steampowered.com/en/faqs/view/7EFD-3CAE-64D3-1C31 https://help.steampowered.com/en/faqs/view/06B0-26E6-2CF8-254C
+## namecheap — Namecheap [other]
+  1F: password | 2F: totp,security_key,backup_codes,email_code
+  R backup_codes (instant): Backup codes are issued when TOTP or U2F is set up ('Want to use a Backup Code?' or 'I lost my device'). Each is single-use and they can be regenerated when logged in.
+  R recovery_email (instant): Password reset link (valid 7 days), requested with your username, email or a domain in the account. If 2FA is off, new-device logins need an emailed code.
+  R id_verification (slow): For account-access problems, Support may ask for documents through Veriff: passport, ID card, driver's license, utility bill or bank statement, among others.
+  R support_form (slow): Lost 2FA and backup codes, or an unusable account email: contact Support by live chat or ticket, and expect 'additional verification details'. No timeline is published.
+  LEGACY: unverified: no published Namecheap deceased-account procedure was found. Presumably handled by Support with documents.
+  Q: Only one 2FA method can be active at a time: TOTP or U2F/WebAuthn (hardware key or platform biometric). SMS 2FA is not among the current options.
+  Q: Without 2FA, a 'trusted device' check emails a code (valid 30 minutes) on new devices. Switching browser, clearing the cache, signing out, a password reset, a new location or the Namecheap VPN all reset trust. Enabling 2FA turns this check off.
+  Q: Domain registrar lockout can cascade: losing the registrar account can mean losing control of DNS and email for your own domain.
+  SRC: https://www.namecheap.com/support/knowledgebase/article.aspx/10073/45/how-can-i-use-the-totp-method-for-twofactor-authentication/ https://www.namecheap.com/support/knowledgebase/article.aspx/10333/45/marking-a-device-as-trusted/ https://www.namecheap.com/support/knowledgebase/article.aspx/10465/45/why-we-can-request-the-documents-and-what-they-will-be/
+## godaddy — GoDaddy [other]
+  1F: password | 2F: push,totp,sms,passkey,security_key
+  R other (instant): 'Try another way' switches to a backup verification method (GoDaddy app, authenticator, SMS or passkey) if one was set up.
+  R id_verification (slow): 'Recover your account' asks for identity information, which may include biometrics through Persona. The Regain Access form needs a color copy of a government photo ID (and business documents for business accounts). GoDaddy notes a high volume of requests and g
+  R support_form (slow): 'Submit Recovery Request' through the Regain Access To My Account form for manual review.
+  LEGACY: The estate administrator submits the Regain Access form with a legal document naming the administrator, the death certificate, and their own government photo ID. All four are required, and GoDaddy says to allow up to 72 hours for initial correspondence.
+  Q: After a successful identity recovery, all existing verification methods are removed and must be set up again.
+  Q: Adding a passkey or hardware security key requires also adding a backup verification method.
+  Q: The 'GoDaddy app' method is recommended. unverified: its exact mechanism (push approval versus in-app code).
+  Q: unverified: whether a passkey fully replaces the password at sign-in or works only as the 2-step verification factor. The security-key doc describes it as used with 2SV.
+  Q: Domain registrar lockout can cascade into losing control of DNS and email for your own domain.
+  SRC: https://www.godaddy.com/help/troubleshoot-identity-verification-methods-7564 https://www.godaddy.com/help/enable-an-identity-verification-method-for-your-godaddy-account-42665 https://www.godaddy.com/help/how-to-gain-access-to-domains-or-accounts-after-account-holders-death-8356
